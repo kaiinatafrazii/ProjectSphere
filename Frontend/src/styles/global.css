@@ -761,6 +761,44 @@ select:focus-visible {
   height: 110px;
 }
 
+.profile-photo-editor {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px 16px;
+}
+
+.profile-photo-editor > img {
+  width: 76px;
+  height: 76px;
+  grid-row: span 2;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--surface);
+}
+
+.profile-photo-editor label {
+  min-width: 0;
+}
+
+.profile-photo-editor input[type='file'] {
+  width: 100%;
+  min-width: 0;
+  padding: 8px;
+  background: var(--panel-strong);
+}
+
+.profile-photo-editor .field-help {
+  grid-column: 2;
+  margin: -8px 0 0;
+}
+
+.profile-photo-editor .link-button {
+  grid-column: 2;
+  justify-self: start;
+}
+
 .profile-card p {
   color: var(--muted);
   margin: 0;

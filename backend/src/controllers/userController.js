@@ -28,10 +28,12 @@ export async function getUserProfile(req, res) {
 }
 
 export async function updateOwnProfile(req, res) {
-  const { name, bio, location, skills } = req.body || {};
+  const { name, bio, location, skills, avatarUrl } = req.body || {};
+  const avatarProvided = Object.hasOwn(req.body || {}, 'avatarUrl');
   const normalizedName = typeof name === 'string' ? name.trim() : '';
   const normalizedBio = typeof bio === 'string' ? bio.trim() : '';
   const normalizedLocation = typeof location === 'string' ? location.trim() : '';
+  const normalizedAvatarUrl = typeof avatarUrl === 'string' ? avatarUrl.trim() : '';
   if (!normalizedName || normalizedName.length > 100) {
     return sendError(res, 400, 'Name is required and must be 100 characters or fewer.');
   }
@@ -41,11 +43,43 @@ export async function updateOwnProfile(req, res) {
   if (!Array.isArray(skills) || skills.length > 20 || skills.some((skill) => typeof skill !== 'string' || skill.trim().length > 40)) {
     return sendError(res, 400, 'Skills must contain up to 20 short text values.');
   }
+  const isHttpImage = normalizedAvatarUrl.length <= 2048 && (() => {
+    if (!normalizedAvatarUrl) return true;
+    try {
+      const parsed = new URL(normalizedAvatarUrl);
+      return ['http:', 'https:'].includes(parsed.protocol);
+    } catch {
+      return false;
+    }
+  })();
+  const uploadedImageMatch = normalizedAvatarUrl.match(/^data:image\/jpeg;base64,([A-Za-z0-9+/]+={0,2})$/);
+  const uploadedImage = uploadedImageMatch ? Buffer.from(uploadedImageMatch[1], 'base64') : null;
+  const isUploadedImage = Boolean(
+    uploadedImage &&
+    normalizedAvatarUrl.length <= 700000 &&
+    uploadedImage.length <= 512000 &&
+    uploadedImage.length >= 4 &&
+    uploadedImage[0] === 0xff &&
+    uploadedImage[1] === 0xd8 &&
+    uploadedImage[2] === 0xff
+  );
+  if (avatarProvided && normalizedAvatarUrl && !isHttpImage && !isUploadedImage) {
+    return sendError(res, 400, 'Profile photo must be a valid HTTP(S) image URL or a resized JPEG image.');
+  }
 
   try {
     await pool.execute(
-      'UPDATE users SET name = ?, bio = ?, location = ?, skills = ? WHERE id = ?',
-      [normalizedName, normalizedBio, normalizedLocation, JSON.stringify(skills.map((skill) => skill.trim()).filter(Boolean)), req.user.id]
+      `UPDATE users SET name = ?, bio = ?, location = ?, skills = ?,
+       avatar_url = CASE WHEN ? THEN ? ELSE avatar_url END WHERE id = ?`,
+      [
+        normalizedName,
+        normalizedBio,
+        normalizedLocation,
+        JSON.stringify(skills.map((skill) => skill.trim()).filter(Boolean)),
+        avatarProvided ? 1 : 0,
+        normalizedAvatarUrl || null,
+        req.user.id,
+      ]
     );
     const user = await findUserById(req.user.id);
     if (!user) return sendError(res, 404, 'User not found.');

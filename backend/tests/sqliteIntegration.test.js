@@ -93,6 +93,35 @@ test('SQLite initializes persistently and supports the account, project, review,
   assert.equal(login.status, 200);
   assert.equal(login.body.user.role, 'student');
   assert.ok(login.cookie);
+  const profilePhoto = `data:image/jpeg;base64,${Buffer.from([0xff, 0xd8, 0xff, 0xd9]).toString('base64')}`;
+  const profileUpdate = await request('/users/me', {
+    method: 'PUT',
+    cookie: owner.cookie,
+    body: {
+      name: 'Updated Project Owner',
+      bio: 'A profile updated in the integration test.',
+      location: 'Remote',
+      skills: ['SQLite', 'React'],
+      avatarUrl: profilePhoto,
+      role: 'admin',
+    },
+  });
+  assert.equal(profileUpdate.status, 200);
+  assert.equal(profileUpdate.body.user.avatarUrl, profilePhoto);
+  assert.equal(profileUpdate.body.user.role, 'student');
+  assert.equal(db.prepare('SELECT avatar_url FROM users WHERE id = ?').get(owner.user.id).avatar_url, profilePhoto);
+  const invalidProfilePhoto = await request('/users/me', {
+    method: 'PUT',
+    cookie: owner.cookie,
+    body: {
+      name: 'Updated Project Owner',
+      bio: '',
+      location: '',
+      skills: [],
+      avatarUrl: 'data:image/jpeg;base64,ZmFrZS1pbWFnZQ==',
+    },
+  });
+  assert.equal(invalidProfilePhoto.status, 400);
 
   const projectResponse = await request('/projects', {
     method: 'POST',

@@ -10,7 +10,9 @@ const backendDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url
 const configuredPath = process.env.SQLITE_DB_PATH || path.join(backendDirectory, 'data', 'projectsphere.sqlite');
 const databasePath = configuredPath === ':memory:'
   ? configuredPath
-  : path.resolve(process.cwd(), configuredPath);
+  : path.isAbsolute(configuredPath)
+    ? configuredPath
+    : path.resolve(backendDirectory, configuredPath);
 
 if (databasePath !== ':memory:') {
   mkdirSync(path.dirname(databasePath), { recursive: true });

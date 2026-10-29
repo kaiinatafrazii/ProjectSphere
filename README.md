@@ -66,7 +66,7 @@ The platform features a modern React frontend, a Node.js and Express REST API, s
 | Frontend | React.js, Vite, React Router |
 | Styling | CSS Modules, custom CSS |
 | Backend | Node.js, Express.js |
-| Database | MySQL 8+ |
+| Database | SQLite (`better-sqlite3`) |
 | Authentication | JWT, HttpOnly cookies, bcrypt |
 | API | REST |
 | Testing | Backend test suite via npm |
@@ -95,9 +95,8 @@ The directory listing above describes the intended organization; the exact inter
 
 Install the following before running the application:
 
-- Node.js 18 or later.
+- Node.js 20 or later.
 - npm 9 or later.
-- MySQL 8.0 or later.
 - Git.
 
 Verify the installations:
@@ -157,57 +156,33 @@ For the backend:
 cd ../backend
 ```
 
-Copy `.env.example` to `.env` and configure the MySQL connection, JWT secret, server port, and other variables documented in that file.
+Copy `.env.example` to `.env` and configure a strong JWT secret, SQLite database path, server port, and frontend origin.
 
 **Important:** Use the actual variable names defined in `backend/.env.example`. Do not commit real secrets or production credentials.
 
-### 4. Configure MySQL
+### 4. Initialize SQLite
 
-Create a database in MySQL:
+The backend creates `backend/data/projectsphere.sqlite` and applies the versioned SQLite schema automatically on first startup. Set `SQLITE_DB_PATH` in `backend/.env` to use a different persistent file. SQLite data, WAL, SHM, and journal files are excluded from Git and are not served publicly.
 
-```sql
-CREATE DATABASE projectsphere;
+### 5. Import existing MySQL data (if applicable)
+
+The backend no longer connects to MySQL during normal operation. Existing MySQL tables are not deleted or changed. Back up your source database, configure its connection values in `backend/.env`, then run this explicit one-time import from `backend/`:
+
+```powershell
+npm run migrate:mysql
 ```
 
-Ensure your backend environment variables point to the correct database and that the configured MySQL account has the required permissions.
-
-### 5. Apply Database Migrations
-
-Run the initial schema migration:
-
-```bash
-mysql -u your_user -p projectsphere < backend/migrations/001_init.sql
-```
-
-Apply the dashboard and moderation migration:
-
-```bash
-mysql -u your_user -p projectsphere < backend/migrations/002_dashboard_moderation.sql
-```
-
-Replace `your_user` with your MySQL username. Enter your password when prompted.
-
-Before applying the second migration, check for duplicate project reviews:
-
-```sql
-SELECT project_id, user_id, COUNT(*) AS duplicate_count
-FROM project_reviews
-GROUP BY project_id, user_id
-HAVING COUNT(*) > 1;
-```
-
-Resolve any duplicates according to your data-retention policy before adding the unique constraint. Back up important data before applying schema changes.
-
-If the current repository contains additional migrations, apply them in the documented order.
+The importer reads supported ProjectSphere tables and inserts them into SQLite inside one transaction. Duplicate review pairs or invalid legacy rows fail and roll back the import; resolve them against a backup and retry. Existing SQLite records with matching IDs are left unchanged. If MySQL was not configured or available, no data is silently invented or discarded.
 
 ### 6. Create an Administrator Account
 
 First, register a normal account through the application. Then promote the trusted account using a controlled database operation:
 
-```sql
-UPDATE users
-SET role = 'admin'
-WHERE email = 'your-admin-email@example.com';
+Promote a trusted existing account using SQLite:
+
+```powershell
+Set-Location backend
+node --input-type=module -e "import { db } from './src/config/db.js'; const result = db.prepare('UPDATE users SET role = ? WHERE email = ?').run('admin', 'your-admin-email@example.com'); console.log('Updated accounts:', result.changes); db.close();"
 ```
 
 Replace the example email with the actual registered email.
@@ -386,7 +361,7 @@ npm start
 
 Before deployment:
 
-- Configure a production MySQL database.
+- Configure a persistent SQLite path and protect database backups.
 - Set all required environment variables.
 - Use HTTPS.
 - Configure the correct frontend origin and backend API URL.
@@ -412,7 +387,8 @@ Set `VITE_SITE_URL` to the real public frontend origin when the frontend build r
 ## Known Limitations & Configuration
 
 - Notifications, account settings, a separate admin profile, and standalone admin review/feedback pages are not included in the documented route list unless implemented separately.
-- Contact submissions require the relevant MySQL table and backend configuration.
+- MySQL configuration is needed only for the explicit migration importer.
+- The SQLite database file defaults to `backend/data/projectsphere.sqlite`; set `SQLITE_DB_PATH` for a deployment-specific path.
 - Contact rate limiting that uses an in-memory store is not shared across multiple backend instances.
 - Production deployment requires a persistent, properly configured database.
 - Analytics and social integrations should only be documented as active after they have been configured and verified.
