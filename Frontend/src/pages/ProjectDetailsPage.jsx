@@ -138,14 +138,6 @@ export default function ProjectDetailsPage() {
 
               <dl className="stats-list">
                 <div>
-                  <dt>Views</dt>
-                  <dd>{project.views}</dd>
-                </div>
-                <div>
-                  <dt>Likes</dt>
-                  <dd>{project.likes}</dd>
-                </div>
-                <div>
                   <dt>Reviews</dt>
                   <dd>{project.reviewCount ?? project.reviews?.length ?? 0}</dd>
                 </div>

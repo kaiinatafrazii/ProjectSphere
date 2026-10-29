@@ -36,10 +36,15 @@ export async function listSavedProjects(req, res) {
     const [projects] = await pool.execute(
       `SELECT p.id, p.title, p.tagline, p.category, p.tech_stack AS techStack,
         p.summary, p.screenshot_url AS screenshotUrl, p.created_at AS createdAt,
-        u.id AS ownerId, u.name AS ownerName
+        u.id AS ownerId, u.name AS ownerName,
+        COALESCE(r.reviewCount, 0) AS reviewCount, r.ratingAverage
        FROM saved_projects s
        JOIN projects p ON p.id = s.project_id
        JOIN users u ON u.id = p.user_id
+       LEFT JOIN (
+         SELECT project_id, COUNT(*) AS reviewCount, AVG(rating) AS ratingAverage
+         FROM project_reviews GROUP BY project_id
+       ) r ON r.project_id = p.id
        WHERE s.user_id = ? AND p.status IN ('published', 'featured')
        ORDER BY s.created_at DESC`,
       [req.user.id]

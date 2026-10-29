@@ -46,7 +46,9 @@ export default function ProjectCard({ project, initialSaved = false, onSavedChan
       <div className="project-card-content">
         <div className="card-meta-row">
           <span className="pill">{project.category}</span>
-          <span className="muted-text">{project.views} views</span>
+          <span className="muted-text">
+            {project.reviewCount > 0 ? `${project.ratingAverage} · ${project.reviewCount} ratings` : 'New project'}
+          </span>
         </div>
         <h3>{project.title}</h3>
         <p className="project-tagline">{project.tagline}</p>
