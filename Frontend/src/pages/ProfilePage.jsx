@@ -88,6 +88,7 @@ export default function ProfilePage() {
       });
     }
     setEditing((current) => !current);
+    setProfilePhotoCleared(false);
     setError('');
     setSuccess('');
   };

@@ -48,6 +48,7 @@ The platform features a modern React frontend, a Node.js and Express REST API, s
 
 ### Authentication & Security
 - User registration and login.
+- Editable profile details and profile photos.
 - Password hashing with bcrypt.
 - JWT-based authentication using an HttpOnly session cookie.
 - Session revocation and expiration.
@@ -57,7 +58,7 @@ The platform features a modern React frontend, a Node.js and Express REST API, s
 ### Contact
 - Contact form with backend validation.
 - Rate-limited contact submissions.
-- Persistent contact-message storage when the required database table is configured.
+- Persistent contact-message storage in SQLite.
 
 ## Tech Stack
 
@@ -104,7 +105,6 @@ Verify the installations:
 ```bash
 node --version
 npm --version
-mysql --version
 ```
 
 ## Getting Started
@@ -290,6 +290,9 @@ The following endpoints are documented for the application.
 | PUT | `/api/projects/:id` | Update an owned project |
 | DELETE | `/api/projects/:id` | Delete an owned project |
 | POST | `/api/projects/:id/reviews` | Submit or update a review |
+| POST/DELETE | `/api/projects/:id/bookmark` | Save or remove a bookmark |
+| GET/PUT | `/api/users/me` | Retrieve or update your profile |
+| GET | `/api/users/me/bookmarks` | Retrieve saved projects |
 
 ### Administration
 
@@ -302,7 +305,7 @@ The following endpoints are documented for the application.
 | GET | `/api/admin/history` | Retrieve moderation history |
 | GET | `/api/users/:id` | Retrieve a user profile |
 
-All routes should be checked against the actual backend implementation. Authentication, validation, ownership checks, and admin authorization must be enforced server-side.
+Authentication, validation, ownership checks, and admin authorization are enforced server-side.
 
 ## Project Moderation Workflow
 
@@ -389,6 +392,7 @@ Set `VITE_SITE_URL` to the real public frontend origin when the frontend build r
 - Notifications, account settings, a separate admin profile, and standalone admin review/feedback pages are not included in the documented route list unless implemented separately.
 - MySQL configuration is needed only for the explicit migration importer.
 - The SQLite database file defaults to `backend/data/projectsphere.sqlite`; set `SQLITE_DB_PATH` for a deployment-specific path.
+- Profile photos support JPG, PNG, and WebP uploads; they are resized in the browser and saved as JPEG image data in the account's SQLite record.
 - Contact rate limiting that uses an in-memory store is not shared across multiple backend instances.
 - Production deployment requires a persistent, properly configured database.
 - Analytics and social integrations should only be documented as active after they have been configured and verified.
