@@ -53,7 +53,11 @@ export async function isSessionActive(sessionId, userId) {
     [sessionId]
   );
   const session = rows[0];
-  return Boolean(session && (session.user_id || session.userId) === userId);
+  return Boolean(
+    session &&
+    (session.user_id || session.userId) === userId &&
+    (!session.expires_at || new Date(session.expires_at).getTime() > Date.now())
+  );
 }
 
 export async function revokeSession(sessionId) {
