@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import Database from 'better-sqlite3';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -355,8 +356,8 @@ test('development admin setup creates an administrator with a password hash and 
     ...process.env,
     SQLITE_DB_PATH: databasePath,
     JWT_SECRET: 'projectsphere-admin-setup-test-secret',
-    ADMIN_EMAIL: 'admin123@gmail.com',
-    ADMIN_PASSWORD: 'kainat123',
+    ADMIN_EMAIL: 'admin-seed@example.test',
+    ADMIN_PASSWORD: 'development-test-password',
   };
   const setup = spawnSync(process.execPath, ['scripts/setup-development-admin.js'], {
     cwd: backendDirectory,
@@ -364,13 +365,13 @@ test('development admin setup creates an administrator with a password hash and 
     encoding: 'utf8',
   });
   assert.equal(setup.status, 0, setup.stderr);
-  assert.match(setup.stdout, /Created the development administrator account admin123@gmail\.com/);
+  assert.match(setup.stdout, /Created the development administrator account admin-seed@example\.test/);
 
   const verify = spawnSync(process.execPath, ['--input-type=module', '-e', `
     import { db } from './src/config/db.js';
     import { verifyPassword } from './src/services/authService.js';
-    const user = db.prepare('SELECT role, password_hash FROM users WHERE email = ?').get('admin123@gmail.com');
-    if (!user || user.role !== 'admin' || user.password_hash === 'kainat123' || !(await verifyPassword('kainat123', user.password_hash))) process.exitCode = 1;
+    const user = db.prepare('SELECT role, password_hash FROM users WHERE email = ?').get('admin-seed@example.test');
+    if (!user || user.role !== 'admin' || user.password_hash === 'development-test-password' || !(await verifyPassword('development-test-password', user.password_hash))) process.exitCode = 1;
     db.close();
   `], {
     cwd: backendDirectory,
@@ -386,4 +387,35 @@ test('development admin setup creates an administrator with a password hash and 
   });
   assert.notEqual(productionSetup.status, 0);
   assert.match(productionSetup.stderr, /disabled in production/i);
+});
+
+test('SQLite upgrades an existing schema version without resetting its records', (context) => {
+  const temporaryDirectory = mkdtempSync(path.join(os.tmpdir(), 'projectsphere-migration-'));
+  const databasePath = path.join(temporaryDirectory, 'legacy.sqlite');
+  context.after(() => rmSync(temporaryDirectory, { recursive: true, force: true }));
+  const legacyDb = new Database(databasePath);
+  legacyDb.exec(readFileSync(path.join(backendDirectory, 'migrations', 'sqlite', '001_initial.sql'), 'utf8'));
+  legacyDb.prepare(
+    'INSERT INTO users (id, name, email, password_hash) VALUES (?, ?, ?, ?)'
+  ).run('legacy-admin', 'Legacy Admin', 'legacy-admin@example.test', 'existing-hash');
+  legacyDb.pragma('user_version = 1');
+  legacyDb.close();
+
+  const upgrade = spawnSync(process.execPath, ['--input-type=module', '-e', `
+    import { db } from './src/config/db.js';
+    const user = db.prepare('SELECT name FROM users WHERE id = ?').get('legacy-admin');
+    const contactReadColumn = db.pragma('table_info(contact_messages)').some((column) => column.name === 'is_read');
+    if (db.pragma('user_version', { simple: true }) !== 2 || user?.name !== 'Legacy Admin' || !contactReadColumn) process.exitCode = 1;
+    db.close();
+  `], {
+    cwd: backendDirectory,
+    env: {
+      ...process.env,
+      NODE_ENV: 'test',
+      SQLITE_DB_PATH: databasePath,
+      JWT_SECRET: 'projectsphere-migration-test-secret',
+    },
+    encoding: 'utf8',
+  });
+  assert.equal(upgrade.status, 0, upgrade.stderr);
 });

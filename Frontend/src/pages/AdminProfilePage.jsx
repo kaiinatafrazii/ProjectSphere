@@ -2,15 +2,17 @@ import { useEffect, useState } from 'react';
 import { apiRequest } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import PasswordField from '../components/PasswordField.jsx';
+import { resizeProfilePhoto } from '../utils/resizeProfilePhoto.js';
 
 export default function AdminProfilePage() {
   const { updateUser } = useAuth();
   const [profile, setProfile] = useState(null);
-  const [form, setForm] = useState({ name: '', bio: '', location: '' });
+  const [form, setForm] = useState({ name: '', bio: '', location: '', avatarUrl: '' });
   const [password, setPassword] = useState({ currentPassword: '', newPassword: '' });
   const [loading, setLoading] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
+  const [processingPhoto, setProcessingPhoto] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
@@ -18,7 +20,7 @@ export default function AdminProfilePage() {
     apiRequest('/admin/profile')
       .then(({ user }) => {
         setProfile(user);
-        setForm({ name: user.name || '', bio: user.bio || '', location: user.location || '' });
+        setForm({ name: user.name || '', bio: user.bio || '', location: user.location || '', avatarUrl: user.avatarUrl || '' });
       })
       .catch((loadError) => setError(loadError.message || 'Unable to load administrator profile.'))
       .finally(() => setLoading(false));
@@ -42,6 +44,18 @@ export default function AdminProfilePage() {
     } finally {
       setSavingProfile(false);
     }
+  };
+
+  const chooseProfilePhoto = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    event.target.value = '';
+    setProcessingPhoto(true);
+    setError('');
+    resizeProfilePhoto(file)
+      .then((avatarUrl) => setForm((current) => ({ ...current, avatarUrl })))
+      .catch((photoError) => setError(photoError.message))
+      .finally(() => setProcessingPhoto(false));
   };
 
   const changePassword = async (event) => {
@@ -77,7 +91,13 @@ export default function AdminProfilePage() {
               <label>Full name<input value={form.name} maxLength={100} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} required /></label>
               <label>Location<input value={form.location} maxLength={100} onChange={(event) => setForm((current) => ({ ...current, location: event.target.value }))} /></label>
               <label>Bio<textarea value={form.bio} maxLength={1000} rows={4} onChange={(event) => setForm((current) => ({ ...current, bio: event.target.value }))} /></label>
-              <button className="primary-button" type="submit" disabled={savingProfile}>{savingProfile ? 'Saving…' : 'Save profile'}</button>
+              <div className="admin-profile-avatar-editor">
+                <img src={form.avatarUrl || '/favicon.svg'} alt="Administrator profile photo preview" />
+                <label>Profile photo<input type="file" accept="image/jpeg,image/png,image/webp" onChange={chooseProfilePhoto} /></label>
+                <p className="field-help">{processingPhoto ? 'Preparing photo…' : 'JPG, PNG, or WebP, up to 5 MB. Images are resized before saving.'}</p>
+                {form.avatarUrl ? <button className="link-button" type="button" onClick={() => setForm((current) => ({ ...current, avatarUrl: '' }))}>Remove profile photo</button> : null}
+              </div>
+              <button className="primary-button" type="submit" disabled={savingProfile || processingPhoto}>{savingProfile ? 'Saving…' : 'Save profile'}</button>
             </form>
           </section>
           <section className="dashboard-section">

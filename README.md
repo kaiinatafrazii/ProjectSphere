@@ -180,14 +180,14 @@ The development-only command below creates or updates an administrator account. 
 
 ```powershell
 Set-Location backend
-$env:ADMIN_EMAIL = 'admin123@gmail.com'
-$env:ADMIN_PASSWORD = 'kainat123'
+$env:ADMIN_EMAIL = 'your-development-admin@example.test'
+$env:ADMIN_PASSWORD = 'choose-a-local-development-password'
 npm run setup:admin
 Remove-Item Env:ADMIN_EMAIL
 Remove-Item Env:ADMIN_PASSWORD
 ```
 
-These are local development credentials only. Change the password after first sign-in and never use this password in a deployed environment. You can provide different values through `ADMIN_EMAIL` and `ADMIN_PASSWORD`; neither value is stored in source code or the environment example.
+Use a unique development password, change it after first sign-in, and never reuse it in a deployed environment. The command accepts `ADMIN_EMAIL` and `ADMIN_PASSWORD`; credentials are not stored in source code or the environment example.
 
 Do not expose an admin role selector on public registration or profile forms. Administrative privileges must be assigned through a trusted process.
 

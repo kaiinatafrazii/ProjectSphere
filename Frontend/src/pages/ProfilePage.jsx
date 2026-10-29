@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { apiRequest } from '../services/api.js';
+import { resizeProfilePhoto } from '../utils/resizeProfilePhoto.js';
 
 export default function ProfilePage() {
   const { user, updateUser } = useAuth();
@@ -98,57 +99,17 @@ export default function ProfilePage() {
     const file = event.target.files?.[0];
     if (!file) return;
     event.target.value = '';
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      setError('Choose a JPG, PNG, or WebP image.');
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setError('Choose an image smaller than 5 MB.');
-      return;
-    }
-
     setProcessingPhoto(true);
     setError('');
-    const image = new Image();
-    const objectUrl = URL.createObjectURL(file);
-    image.onload = () => {
-      URL.revokeObjectURL(objectUrl);
-      const maxDimension = 512;
-      const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.max(1, Math.round(image.width * scale));
-      canvas.height = Math.max(1, Math.round(image.height * scale));
-      const context = canvas.getContext('2d');
-      if (!context) {
-        setProcessingPhoto(false);
-        setError('This image could not be processed. Try another image.');
-        return;
-      }
-      context.drawImage(image, 0, 0, canvas.width, canvas.height);
-      let imageData = '';
-      for (const quality of [0.78, 0.68, 0.58, 0.48]) {
-        imageData = canvas.toDataURL('image/jpeg', quality);
-        const base64Length = imageData.length - 'data:image/jpeg;base64,'.length;
-        if (Math.ceil(base64Length * 3 / 4) <= 512000) break;
-        imageData = '';
-      }
-      if (!imageData) {
-        setProcessingPhoto(false);
-        setError('This image is too detailed to save. Choose a smaller image.');
-        return;
-      }
+    resizeProfilePhoto(file)
+      .then((imageData) => {
       setForm((current) => ({ ...current, avatarUrl: imageData }));
       setProfilePhotoCleared(false);
       setError('');
       setSuccess('');
-      setProcessingPhoto(false);
-    };
-    image.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
-      setProcessingPhoto(false);
-      setError('This image could not be read. Try another image.');
-    };
-    image.src = objectUrl;
+      })
+      .catch((photoError) => setError(photoError.message))
+      .finally(() => setProcessingPhoto(false));
   };
 
   if (loading) {
