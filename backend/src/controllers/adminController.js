@@ -359,89 +359,89 @@ export async function listAdminReviews(req, res) {
     console.error('Admin review listing failed:', error);
     return sendError(res, 500, 'Unable to load project reviews.');
   }
+}
 
-  export async function listAdminContactMessages(req, res) {
-    const { page, limit, offset } = pagination(req.query);
-    const unreadOnly = req.query.unread === 'true';
-    const where = unreadOnly ? 'WHERE is_read = 0' : '';
+export async function listAdminContactMessages(req, res) {
+  const { page, limit, offset } = pagination(req.query);
+  const unreadOnly = req.query.unread === 'true';
+  const where = unreadOnly ? 'WHERE is_read = 0' : '';
+  try {
+    const [countRows] = await pool.execute(`SELECT COUNT(*) AS total FROM contact_messages ${where}`);
+    const [messages] = await pool.execute(
+      `SELECT id, name, email, subject, message, is_read AS isRead, created_at AS createdAt
+       FROM contact_messages ${where}
+       ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      [limit, offset]
+    );
+    return sendSuccess(res, { messages, page, limit, total: Number(countRows[0].total) });
+  } catch (error) {
+    console.error('Admin contact message listing failed:', error);
+    return sendError(res, 500, 'Unable to load contact messages.');
+  }
+}
+
+export async function markContactMessageRead(req, res) {
+  if (typeof req.body?.isRead !== 'boolean') {
+    return sendError(res, 400, 'isRead must be true or false.');
+  }
+  try {
+    const [result] = await pool.execute(
+      'UPDATE contact_messages SET is_read = ? WHERE id = ?',
+      [req.body.isRead ? 1 : 0, req.params.id]
+    );
+    if (!result.affectedRows) return sendError(res, 404, 'Contact message not found.');
+    return sendSuccess(res, { message: 'Contact message updated.' });
+  } catch (error) {
+    console.error('Admin contact message update failed:', error);
+    return sendError(res, 500, 'Unable to update contact message.');
+  }
+}
+
+export async function getAdminProfile(req, res) {
+  try {
+    const user = await findUserById(req.user.id);
+    if (!user || user.role !== 'admin') return sendError(res, 403, 'Administrator access required.');
+    return sendSuccess(res, { user: buildUserView(user) });
+  } catch (error) {
+    console.error('Admin profile retrieval failed:', error);
+    return sendError(res, 500, 'Unable to load administrator profile.');
+  }
+}
+
+export async function changeAdminPassword(req, res) {
+  const currentPassword = req.body?.currentPassword;
+  const newPassword = req.body?.newPassword;
+  if (typeof currentPassword !== 'string' || typeof newPassword !== 'string') {
+    return sendError(res, 400, 'Enter your current password and a new password.');
+  }
+  if (newPassword.length < 12 || newPassword.length > 72) {
+    return sendError(res, 400, 'The new password must be between 12 and 72 characters.');
+  }
+  try {
+    const user = await findUserById(req.user.id);
+    if (!user || user.role !== 'admin') return sendError(res, 403, 'Administrator access required.');
+    if (!(await verifyPassword(currentPassword, user.password_hash))) {
+      return sendError(res, 401, 'Current password is incorrect.');
+    }
+    const passwordHash = await hashPassword(newPassword);
+    const connection = await pool.getConnection();
     try {
-      const [countRows] = await pool.execute(`SELECT COUNT(*) AS total FROM contact_messages ${where}`);
-      const [messages] = await pool.execute(
-        `SELECT id, name, email, subject, message, is_read AS isRead, created_at AS createdAt
-         FROM contact_messages ${where}
-         ORDER BY created_at DESC LIMIT ? OFFSET ?`,
-        [limit, offset]
+      await connection.beginTransaction();
+      await connection.execute('UPDATE users SET password_hash = ? WHERE id = ?', [passwordHash, req.user.id]);
+      await connection.execute(
+        'UPDATE auth_sessions SET revoked_at = CURRENT_TIMESTAMP WHERE user_id = ? AND id <> ? AND revoked_at IS NULL',
+        [req.user.id, req.user.sid]
       );
-      return sendSuccess(res, { messages, page, limit, total: Number(countRows[0].total) });
+      await connection.commit();
     } catch (error) {
-      console.error('Admin contact message listing failed:', error);
-      return sendError(res, 500, 'Unable to load contact messages.');
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
     }
-  }
-
-  export async function markContactMessageRead(req, res) {
-    if (typeof req.body?.isRead !== 'boolean') {
-      return sendError(res, 400, 'isRead must be true or false.');
-    }
-    try {
-      const [result] = await pool.execute(
-        'UPDATE contact_messages SET is_read = ? WHERE id = ?',
-        [req.body.isRead ? 1 : 0, req.params.id]
-      );
-      if (!result.affectedRows) return sendError(res, 404, 'Contact message not found.');
-      return sendSuccess(res, { message: 'Contact message updated.' });
-    } catch (error) {
-      console.error('Admin contact message update failed:', error);
-      return sendError(res, 500, 'Unable to update contact message.');
-    }
-  }
-
-  export async function getAdminProfile(req, res) {
-    try {
-      const user = await findUserById(req.user.id);
-      if (!user || user.role !== 'admin') return sendError(res, 403, 'Administrator access required.');
-      return sendSuccess(res, { user: buildUserView(user) });
-    } catch (error) {
-      console.error('Admin profile retrieval failed:', error);
-      return sendError(res, 500, 'Unable to load administrator profile.');
-    }
-  }
-
-  export async function changeAdminPassword(req, res) {
-    const currentPassword = req.body?.currentPassword;
-    const newPassword = req.body?.newPassword;
-    if (typeof currentPassword !== 'string' || typeof newPassword !== 'string') {
-      return sendError(res, 400, 'Enter your current password and a new password.');
-    }
-    if (newPassword.length < 12 || newPassword.length > 72) {
-      return sendError(res, 400, 'The new password must be between 12 and 72 characters.');
-    }
-    try {
-      const user = await findUserById(req.user.id);
-      if (!user || user.role !== 'admin') return sendError(res, 403, 'Administrator access required.');
-      if (!(await verifyPassword(currentPassword, user.password_hash))) {
-        return sendError(res, 401, 'Current password is incorrect.');
-      }
-      const passwordHash = await hashPassword(newPassword);
-      const connection = await pool.getConnection();
-      try {
-        await connection.beginTransaction();
-        await connection.execute('UPDATE users SET password_hash = ? WHERE id = ?', [passwordHash, req.user.id]);
-        await connection.execute(
-          'UPDATE auth_sessions SET revoked_at = CURRENT_TIMESTAMP WHERE user_id = ? AND id <> ? AND revoked_at IS NULL',
-          [req.user.id, req.user.sid]
-        );
-        await connection.commit();
-      } catch (error) {
-        await connection.rollback();
-        throw error;
-      } finally {
-        connection.release();
-      }
-      return sendSuccess(res, { message: 'Password changed. Other active sessions have been signed out.' });
-    } catch (error) {
-      console.error('Admin password update failed:', error);
-      return sendError(res, 500, 'Unable to change your password.');
-    }
+    return sendSuccess(res, { message: 'Password changed. Other active sessions have been signed out.' });
+  } catch (error) {
+    console.error('Admin password update failed:', error);
+    return sendError(res, 500, 'Unable to change your password.');
   }
 }

@@ -2283,3 +2283,58 @@ select:focus-visible {
     width: 100%;
   }
 }
+
+.admin-user-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.admin-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.admin-profile-grid .dashboard-section {
+  min-width: 0;
+  margin: 0;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel-strong);
+}
+
+.admin-profile-grid .stacked-form {
+  margin-top: 20px;
+}
+
+.admin-filter-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+}
+
+.admin-filter-check input {
+  accent-color: var(--accent);
+}
+
+.admin-record.is-unread {
+  border-left: 3px solid var(--accent);
+}
+
+.admin-user-detail {
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel-strong);
+}
+
+@media (max-width: 760px) {
+  .admin-profile-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-user-row {
+    grid-template-columns: 1fr;
+  }
+}
