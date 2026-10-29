@@ -2,7 +2,9 @@ import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { rateLimit } from 'express-rate-limit';
 import multer from 'multer';
+import yauzl from 'yauzl';
 import { pool } from '../config/db.js';
 import { sendError, sendSuccess } from '../utils/response.js';
 
@@ -22,7 +24,16 @@ for (const publicDirectory of [
   }
 }
 const MAX_ARCHIVE_BYTES = 20 * 1024 * 1024;
+const MAX_ARCHIVE_ENTRIES = 5000;
 const zipSignature = Buffer.from([0x50, 0x4b, 0x03, 0x04]);
+
+export const sourceCodeUploadLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many source archive uploads. Please try again later.' },
+});
 
 export const sourceCodeUpload = multer({
   storage: multer.memoryStorage(),
@@ -49,7 +60,53 @@ export function sourceCodeUploadMiddleware(req, res, next) {
 function safeOriginalFilename(filename) {
   const basename = filename.replace(/[\\/]/g, '/').split('/').pop() || 'source-code.zip';
   const safeName = basename.replace(/[^A-Za-z0-9._ -]/g, '_').replace(/^[. ]+|[. ]+$/g, '').slice(0, 155);
-  return safeName.toLowerCase().endsWith('.zip') ? safeName : `${safeName}.zip`;
+  const filenameBase = safeName || 'source-code';
+  return filenameBase.toLowerCase().endsWith('.zip') ? filenameBase : `${filenameBase}.zip`;
+}
+
+function validateZipStructure(buffer) {
+  return new Promise((resolve, reject) => {
+    yauzl.fromBuffer(buffer, { lazyEntries: true, strictFileNames: true }, (error, zipFile) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+      if (zipFile.entryCount === 0 || zipFile.entryCount > MAX_ARCHIVE_ENTRIES) {
+        zipFile.close();
+        reject(new Error('ZIP archive must contain between 1 and 5000 entries.'));
+        return;
+      }
+      zipFile.once('error', (zipError) => {
+        zipFile.close();
+        reject(zipError);
+      });
+      zipFile.once('end', () => {
+        zipFile.close();
+        resolve();
+      });
+      zipFile.on('entry', () => zipFile.readEntry());
+      zipFile.readEntry();
+    });
+  });
+}
+
+export async function requireProjectSourceOwner(req, res, next) {
+  try {
+    const [rows] = await pool.execute(
+      'SELECT user_id AS userId, status FROM projects WHERE id = ?',
+      [req.params.id]
+    );
+    if (!rows[0] || rows[0].userId !== req.user.id) {
+      return sendError(res, 404, 'Project not found.');
+    }
+    if (rows[0].status === 'removed') {
+      return sendError(res, 409, 'Source code cannot be added to a removed project.');
+    }
+    return next();
+  } catch (error) {
+    console.error('Project source-code ownership check failed:', error);
+    return sendError(res, 500, 'Unable to verify project ownership.');
+  }
 }
 
 function storagePath(storageKey) {
@@ -87,6 +144,11 @@ export async function uploadProjectSourceCode(req, res) {
     }
     if (!req.file) return sendError(res, 400, 'Choose a ZIP source-code archive to upload.');
     if (req.file.size < zipSignature.length || !req.file.buffer.subarray(0, 4).equals(zipSignature)) {
+      return sendError(res, 400, 'The uploaded file is not a valid ZIP archive.');
+    }
+    try {
+      await validateZipStructure(req.file.buffer);
+    } catch {
       return sendError(res, 400, 'The uploaded file is not a valid ZIP archive.');
     }
 

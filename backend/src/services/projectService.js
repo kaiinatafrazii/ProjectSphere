@@ -64,7 +64,9 @@ export async function getProjectByIdService(id) {
   if (!project) return null;
   const owner = await findUserById(project.user_id || project.userId);
   const reviews = Array.isArray(project.reviews) ? project.reviews : await listProjectReviews(id);
-  const ownerProjects = await listProjects({ ownerId: owner?.id, excludeId: id, limit: 4 });
+  const ownerProjects = owner
+    ? await listProjects({ ownerId: owner.id, excludeId: id, limit: 4 })
+    : { projects: [] };
   return {
     id: project.id,
     title: project.title,

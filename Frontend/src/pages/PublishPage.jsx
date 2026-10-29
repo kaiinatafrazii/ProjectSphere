@@ -192,7 +192,7 @@ export default function PublishPage() {
                 A public repository URL is visible to everyone. A ZIP archive uploaded here stays private
                 and can only be downloaded by administrators reviewing your project. It is never published.
               </p>
-              {existingSource ? (
+              {loadingSource ? <p className="field-help" role="status">Loading archive status…</p> : existingSource ? (
                 <p className="field-help">Archive on file: {existingSource.originalFilename} ({Math.ceil(existingSource.sizeBytes / 1024)} KB).</p>
               ) : <p className="field-help">No private source archive submitted.</p>}
               <label>
@@ -201,6 +201,7 @@ export default function PublishPage() {
                   const file = event.target.files?.[0] || null;
                   event.target.value = '';
                   if (file && file.size > 20 * 1024 * 1024) {
+                    setSourceArchive(null);
                     setError('Source-code ZIP archives must be 20 MB or smaller.');
                     return;
                   }

@@ -12,6 +12,29 @@ import { pool } from '../src/config/db.js';
 
 const backendDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
+function createZipArchive() {
+  const filename = Buffer.from('main.js');
+  const localHeader = Buffer.alloc(30);
+  localHeader.writeUInt32LE(0x04034b50, 0);
+  localHeader.writeUInt16LE(20, 4);
+  localHeader.writeUInt16LE(filename.length, 26);
+
+  const centralHeader = Buffer.alloc(46);
+  centralHeader.writeUInt32LE(0x02014b50, 0);
+  centralHeader.writeUInt16LE(20, 4);
+  centralHeader.writeUInt16LE(20, 6);
+  centralHeader.writeUInt16LE(filename.length, 28);
+  const centralDirectory = Buffer.concat([centralHeader, filename]);
+
+  const endRecord = Buffer.alloc(22);
+  endRecord.writeUInt32LE(0x06054b50, 0);
+  endRecord.writeUInt16LE(1, 8);
+  endRecord.writeUInt16LE(1, 10);
+  endRecord.writeUInt32LE(centralDirectory.length, 12);
+  endRecord.writeUInt32LE(localHeader.length + filename.length, 16);
+  return Buffer.concat([localHeader, filename, centralDirectory, endRecord]);
+}
+
 test('SQLite initializes persistently and supports the account, project, review, bookmark, and moderation flows', async (context) => {
   const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map(({ name }) => name);
   for (const table of [
@@ -196,7 +219,8 @@ test('SQLite initializes persistently and supports the account, project, review,
   assert.equal(db.prepare('SELECT COUNT(*) AS count FROM project_source_code WHERE project_id = ?').get(projectId).count, 0);
 
   const sourceArchive = new FormData();
-  sourceArchive.append('sourceCode', new Blob([Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x14, 0x00])], { type: 'application/zip' }), '../../private-project.zip');
+  const zipBytes = createZipArchive();
+  sourceArchive.append('sourceCode', new Blob([zipBytes], { type: 'application/zip' }), '../../private-project.zip');
   const uploadedArchive = await request(`/projects/${projectId}/source-code`, {
     method: 'POST',
     cookie: owner.cookie,
@@ -294,7 +318,7 @@ test('SQLite initializes persistently and supports the account, project, review,
   assert.equal(Object.hasOwn(adminProjectDetails.body.project.sourceCode, 'storageKey'), false);
   const adminArchiveDownload = await request(`/admin/projects/${projectId}/source-code/download`, { cookie: adminLogin.cookie });
   assert.equal(adminArchiveDownload.status, 200);
-  assert.deepEqual(Buffer.from(adminArchiveDownload.body), Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x14, 0x00]));
+  assert.deepEqual(Buffer.from(adminArchiveDownload.body), zipBytes);
 
   const rejected = await request(`/admin/projects/${projectId}/moderate`, {
     method: 'POST',
