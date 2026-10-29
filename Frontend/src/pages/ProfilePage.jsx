@@ -7,6 +7,8 @@ export default function ProfilePage() {
   const { user } = useAuth();
   const [profile, setProfile] = useState(null);
   const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     async function loadProfile() {
@@ -18,12 +20,22 @@ export default function ProfilePage() {
         setProfile(userResponse.user);
         setProjects((projectResponse.projects || []).filter((project) => project.owner?.id === user.id));
       } catch (error) {
-        console.error(error);
+        setError(error.message || 'Unable to load your profile.');
+      } finally {
+        setLoading(false);
       }
     }
 
     loadProfile();
   }, [user]);
+
+  if (loading) {
+    return <div className="page-shell center-block"><div className="empty-state" role="status">Loading your profile…</div></div>;
+  }
+
+  if (error) {
+    return <div className="page-shell center-block"><div className="empty-state" role="alert">{error}</div></div>;
+  }
 
   if (!profile && !user) {
     return <div className="page-shell center-block"><div className="empty-state">Log in to view your profile.</div></div>;

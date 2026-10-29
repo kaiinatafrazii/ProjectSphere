@@ -10,6 +10,10 @@ export default function ProjectDetailsPage() {
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
   const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' });
+  const [reviewError, setReviewError] = useState('');
+  const [reviewSuccess, setReviewSuccess] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
     async function loadProject() {
@@ -17,7 +21,7 @@ export default function ProjectDetailsPage() {
         const response = await apiRequest(`/projects/${id}`);
         setProject(response.project);
       } catch (error) {
-        console.error(error);
+        setLoadError(error.message || 'Unable to load this project.');
       } finally {
         setLoading(false);
       }
@@ -29,25 +33,35 @@ export default function ProjectDetailsPage() {
   const handleSubmitReview = async (event) => {
     event.preventDefault();
     if (!user) {
-      navigate('/login');
+      navigate('/login', { state: { from: `/projects/${id}` } });
       return;
     }
 
+    setReviewError('');
+    setReviewSuccess('');
+    setSubmittingReview(true);
     try {
       await apiRequest(`/projects/${id}/reviews`, {
         method: 'POST',
-        body: JSON.stringify(reviewForm),
+        body: JSON.stringify({ ...reviewForm, comment: reviewForm.comment.trim() }),
       });
       setReviewForm({ rating: 5, comment: '' });
-      const response = await apiRequest(`/projects/${id}`);
-      setProject(response.project);
+      setReviewSuccess('Your review has been published.');
+      try {
+        const response = await apiRequest(`/projects/${id}`);
+        setProject(response.project);
+      } catch {
+        setReviewError('Your review was saved, but the latest review list could not be refreshed.');
+      }
     } catch (error) {
-      console.error(error);
+      setReviewError(error.message || 'Unable to submit your review.');
+    } finally {
+      setSubmittingReview(false);
     }
   };
 
   if (loading) return <div className="page-shell center-block"><div className="empty-state">Loading project details...</div></div>;
-  if (!project) return <div className="page-shell center-block"><div className="empty-state">Project not found.</div></div>;
+  if (!project) return <div className="page-shell center-block"><div className="empty-state" role="alert">{loadError || 'Project not found.'}<p><Link to="/discover">Return to projects</Link></p></div></div>;
 
   return (
     <div className="page-shell detail-page">
@@ -59,11 +73,11 @@ export default function ProjectDetailsPage() {
             <p className="project-tagline large">{project.tagline}</p>
             <div className="hero-actions compact">
               {project.liveUrl ? <a href={project.liveUrl} className="primary-button" target="_blank" rel="noreferrer">Live demo</a> : null}
-              {project.repoUrl ? <a href={project.repoUrl} className="secondary-button light" target="_blank" rel="noreferrer">Source code</a> : null}
+              {project.repoUrl ? <a href={project.repoUrl} className="secondary-button" target="_blank" rel="noreferrer">Source code</a> : null}
             </div>
           </div>
           <div className="project-hero-media">
-            <img src={project.screenshotUrl} alt={project.title} />
+            {project.screenshotUrl ? <img src={project.screenshotUrl} alt={`${project.title} project preview`} /> : <div className="image-placeholder">Project preview unavailable</div>}
           </div>
         </div>
       </section>
@@ -146,9 +160,17 @@ export default function ProjectDetailsPage() {
                 </label>
                 <label>
                   Comment
-                  <textarea value={reviewForm.comment} onChange={(event) => setReviewForm({ ...reviewForm, comment: event.target.value })} rows={4} placeholder="Share your feedback..." />
+                  <textarea value={reviewForm.comment} onChange={(event) => setReviewForm({ ...reviewForm, comment: event.target.value })} rows={4} maxLength={3000} placeholder="Share your feedback..." required />
                 </label>
-                <button type="submit" className="primary-button full-width">Submit review</button>
+                {reviewError ? <p className="error-text" role="alert">{reviewError}</p> : null}
+                {reviewSuccess ? <p className="success-text" role="status">{reviewSuccess}</p> : null}
+                {user ? (
+                  <button type="submit" className="primary-button full-width" disabled={submittingReview}>
+                    {submittingReview ? 'Submitting…' : 'Submit review'}
+                  </button>
+                ) : (
+                  <Link to="/login" state={{ from: `/projects/${id}` }} className="primary-button full-width">Log in to review</Link>
+                )}
               </form>
             </div>
           </aside>

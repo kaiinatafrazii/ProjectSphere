@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import ProjectCard from '../components/ProjectCard.jsx';
 import { apiRequest } from '../services/api.js';
 
 const categories = ['all', 'Productivity', 'AI/ML', 'Developer Tools', 'Research', 'Frontend', 'Backend'];
 
 export default function DiscoverPage() {
+  const location = useLocation();
   const [projects, setProjects] = useState([]);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(() => new URLSearchParams(location.search).get('search') || '');
   const [category, setCategory] = useState('all');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     async function fetchProjects() {
@@ -21,7 +24,8 @@ export default function DiscoverPage() {
         const response = await apiRequest(`/projects?${params.toString()}`);
         setProjects(response.projects || []);
       } catch (error) {
-        console.error(error);
+        setProjects([]);
+        setError('Unable to load projects. Check your connection and try again.');
       } finally {
         setLoading(false);
       }
@@ -29,6 +33,10 @@ export default function DiscoverPage() {
 
     fetchProjects();
   }, [category, search]);
+
+  useEffect(() => {
+    setSearch(new URLSearchParams(location.search).get('search') || '');
+  }, [location.search]);
 
   return (
     <div className="page-shell narrow-page">
@@ -46,6 +54,7 @@ export default function DiscoverPage() {
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search by project name or keyword"
               className="search-input"
+              aria-label="Search projects"
             />
             <div className="category-filter">
               {categories.map((item) => (
@@ -53,6 +62,7 @@ export default function DiscoverPage() {
                   key={item}
                   type="button"
                   className={item === category ? 'filter-chip active' : 'filter-chip'}
+                  aria-pressed={item === category}
                   onClick={() => setCategory(item)}
                 >
                   {item}
@@ -61,8 +71,11 @@ export default function DiscoverPage() {
             </div>
           </div>
 
+          {location.state?.notice ? <p className="success-text" role="status">{location.state.notice}</p> : null}
           {loading ? (
-            <div className="empty-state">Loading projects...</div>
+            <div className="empty-state" role="status">Loading projects…</div>
+          ) : error ? (
+            <div className="empty-state" role="alert">{error}</div>
           ) : projects.length === 0 ? (
             <div className="empty-state">No projects match your filters yet.</div>
           ) : (

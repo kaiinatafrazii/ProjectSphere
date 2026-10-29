@@ -1,4 +1,4 @@
-import { createProject, createReview, findProjectById, listProjects } from '../repositories/projectRepository.js';
+import { createProject, createReview, findProjectById, listProjectReviews, listProjects } from '../repositories/projectRepository.js';
 import { findUserById } from '../repositories/userRepository.js';
 import { generateId } from './authService.js';
 
@@ -7,7 +7,7 @@ export async function getProjects(filters = {}) {
   return Promise.all(
     projects.map(async (project) => {
       const owner = await findUserById(project.user_id || project.userId);
-      const reviews = Array.isArray(project.reviews) ? project.reviews : [];
+      const reviews = Array.isArray(project.reviews) ? project.reviews : await listProjectReviews(project.id);
       return {
         id: project.id,
         title: project.title,
@@ -39,6 +39,7 @@ export async function getProjectByIdService(id) {
   const project = await findProjectById(id);
   if (!project) return null;
   const owner = await findUserById(project.user_id || project.userId);
+  const reviews = Array.isArray(project.reviews) ? project.reviews : await listProjectReviews(id);
   return {
     id: project.id,
     title: project.title,
@@ -55,7 +56,12 @@ export async function getProjectByIdService(id) {
     status: project.status,
     createdAt: project.created_at || project.createdAt,
     owner: owner ? { id: owner.id, name: owner.name, avatarUrl: owner.avatar_url || owner.avatarUrl } : null,
-    reviews: Array.isArray(project.reviews) ? project.reviews : [],
+    reviews: reviews.map((review) => ({
+      id: review.id,
+      rating: Number(review.rating),
+      comment: review.comment,
+      userName: review.userName || 'Community member',
+    })),
   };
 }
 

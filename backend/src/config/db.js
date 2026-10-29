@@ -154,7 +154,18 @@ function fallbackQuery(sql, params = []) {
     return [...memoryStore.projects];
   }
   if (normalized.startsWith('SELECT') && normalized.includes('FROM project_reviews')) {
-    return [...memoryStore.projects.flatMap((project) => project.reviews.map((review) => ({ ...review, projectId: project.id })) )];
+    const projectId = params[0];
+    const projects = projectId
+      ? memoryStore.projects.filter((project) => project.id === projectId)
+      : memoryStore.projects;
+    return projects.flatMap((project) =>
+      project.reviews.map((review) => ({
+        ...review,
+        project_id: project.id,
+        projectId: project.id,
+        userName: memoryStore.users.find((user) => user.id === review.userId)?.name || 'Community member',
+      }))
+    );
   }
   if (normalized.startsWith('INSERT INTO users')) {
     const [id, name, email, passwordHash, bio, avatarUrl, location, skills, role] = params;

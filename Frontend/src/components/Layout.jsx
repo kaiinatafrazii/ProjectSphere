@@ -1,10 +1,9 @@
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Layout() {
   const { user, logout, loading } = useAuth();
-  const location = useLocation();
   const navigate = useNavigate();
   const [logoutError, setLogoutError] = useState('');
   const [loggingOut, setLoggingOut] = useState(false);
@@ -26,7 +25,7 @@ export default function Layout() {
     <div className="app-shell">
       <header className="topbar">
         <div className="container nav-wrap">
-          <NavLink to="/" className="brand" aria-label="ProjectSphere home">
+          <NavLink to="/" end className="brand" aria-label="ProjectSphere home">
             <span className="brand-mark">P</span>
             <span>ProjectSphere</span>
           </NavLink>
@@ -64,6 +63,19 @@ export default function Layout() {
         ) : null}
         <Outlet />
       </main>
+      <footer className="site-footer">
+        <div className="container footer-content">
+          <NavLink to="/" className="brand" aria-label="ProjectSphere home">
+            <span className="brand-mark">P</span>
+            <span>ProjectSphere</span>
+          </NavLink>
+          <p>Discover, publish, and improve technical work together.</p>
+          <nav aria-label="Footer navigation">
+            <NavLink to="/">Home</NavLink>
+            <NavLink to="/discover">Discover projects</NavLink>
+          </nav>
+        </div>
+      </footer>
     </div>
   );
 }

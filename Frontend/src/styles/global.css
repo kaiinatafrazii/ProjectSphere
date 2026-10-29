@@ -50,6 +50,20 @@ button {
   cursor: pointer;
 }
 
+button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 3px solid rgba(20, 92, 90, 0.42);
+  outline-offset: 3px;
+}
+
 #root {
   min-height: 100vh;
 }
@@ -153,9 +167,9 @@ button {
 }
 
 .secondary-button.light {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(255, 255, 255, 0.25);
-  color: white;
+  background: rgba(255, 255, 255, 0.9);
+  border-color: var(--line);
+  color: var(--ink);
 }
 
 .link-button {
@@ -765,6 +779,128 @@ button {
   font-size: 0.92rem;
 }
 
+.success-text {
+  margin: 0;
+  color: #146342;
+  font-size: 0.92rem;
+}
+
+.field-help {
+  margin: -8px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.password-label {
+  min-width: 0;
+}
+
+.password-control {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+.password-control input {
+  padding-right: 52px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.password-toggle:hover {
+  background: var(--surface);
+  color: var(--accent);
+}
+
+.password-toggle svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.home-search {
+  display: flex;
+  width: min(100%, 520px);
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.home-search input {
+  flex: 1;
+  min-width: 0;
+  min-height: 46px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel-strong);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.image-placeholder {
+  display: grid;
+  width: 100%;
+  min-height: 360px;
+  place-items: center;
+  border: 1px dashed var(--line);
+  border-radius: 24px;
+  color: var(--muted);
+  background: var(--surface);
+}
+
+.site-footer {
+  padding: 28px 0;
+  border-top: 1px solid var(--line);
+  background: rgba(255, 253, 251, 0.7);
+}
+
+.footer-content,
+.footer-content nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.footer-content p,
+.footer-content nav a {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.footer-content nav {
+  gap: 16px;
+}
+
 @media (max-width: 860px) {
   .hero-grid,
   .project-hero-grid,
@@ -795,5 +931,60 @@ button {
   .profile-card {
     grid-template-columns: 1fr;
     text-align: center;
+  }
+}
+
+@media (max-width: 560px) {
+  .container,
+  .narrow-page {
+    width: calc(100% - 24px);
+  }
+
+  .page-shell {
+    padding: 28px 0 52px;
+  }
+
+  .hero-section {
+    padding: 28px 0 24px;
+  }
+
+  .hero-section h1 {
+    font-size: clamp(2.35rem, 11vw, 3.2rem);
+  }
+
+  .nav-wrap {
+    gap: 12px;
+  }
+
+  .main-nav,
+  .nav-actions {
+    gap: 12px;
+  }
+
+  .auth-card {
+    padding: 22px 18px;
+  }
+
+  .home-search {
+    align-items: stretch;
+  }
+
+  .home-search .secondary-button {
+    padding: 0 13px;
+  }
+
+  .featured-panel img {
+    height: 240px;
+  }
+
+  .project-hero-media img,
+  .image-placeholder {
+    min-height: 240px;
+  }
+
+  .footer-content,
+  .footer-content nav {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

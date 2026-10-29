@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import Layout from './components/Layout.jsx';
 import { useAuth } from './context/AuthContext.jsx';
 import DiscoverPage from './pages/DiscoverPage.jsx';
@@ -38,7 +38,7 @@ function NotFoundPage() {
       <div className="empty-state">
         <h1>Page not found</h1>
         <p>This page may have moved or no longer exists.</p>
-        <a className="primary-button" href="/">Back to home</a>
+        <Link className="primary-button" to="/">Back to home</Link>
       </div>
     </div>
   );

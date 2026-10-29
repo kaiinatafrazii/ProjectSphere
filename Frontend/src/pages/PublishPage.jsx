@@ -15,15 +15,20 @@ export default function PublishPage() {
     liveUrl: '',
     screenshotUrl: '',
   });
+  const [error, setError] = useState('');
+  const [publishing, setPublishing] = useState(false);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
     setForm((current) => ({ ...current, [name]: value }));
+    setError('');
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
 
+    setError('');
+    setPublishing(true);
     try {
       await apiRequest('/projects', {
         method: 'POST',
@@ -32,9 +37,11 @@ export default function PublishPage() {
           techStack: form.techStack.split(',').map((item) => item.trim()).filter(Boolean),
         }),
       });
-      navigate('/discover');
+      navigate('/discover', { replace: true, state: { notice: 'Your project has been published.' } });
     } catch (error) {
-      console.error(error);
+      setError(error.message || 'Unable to publish your project.');
+    } finally {
+      setPublishing(false);
     }
   };
 
@@ -51,7 +58,7 @@ export default function PublishPage() {
             <div className="form-grid two-up">
               <label>
                 Project title
-                <input name="title" value={form.title} onChange={handleChange} placeholder="ProjectSphere" required />
+                <input name="title" value={form.title} onChange={handleChange} maxLength={150} placeholder="ProjectSphere" required />
               </label>
               <label>
                 Category
@@ -68,7 +75,7 @@ export default function PublishPage() {
 
             <label>
               Tagline
-              <input name="tagline" value={form.tagline} onChange={handleChange} placeholder="A premium project discovery platform for developers." required />
+              <input name="tagline" value={form.tagline} onChange={handleChange} maxLength={220} placeholder="A premium project discovery platform for developers." required />
             </label>
 
             <label>
@@ -78,31 +85,34 @@ export default function PublishPage() {
 
             <label>
               Summary
-              <textarea name="summary" value={form.summary} onChange={handleChange} rows={3} placeholder="Short summary of the product and its value." required />
+              <textarea name="summary" value={form.summary} onChange={handleChange} rows={3} maxLength={5000} placeholder="Short summary of the product and its value." required />
             </label>
 
             <label>
               Overview
-              <textarea name="overview" value={form.overview} onChange={handleChange} rows={5} placeholder="Describe the problem, solution, and product story." required />
+              <textarea name="overview" value={form.overview} onChange={handleChange} rows={5} maxLength={20000} placeholder="Describe the problem, solution, and product story." required />
             </label>
 
             <div className="form-grid two-up">
               <label>
                 Repository URL
-                <input name="repoUrl" value={form.repoUrl} onChange={handleChange} placeholder="https://github.com/your-repo" />
+                <input type="url" name="repoUrl" value={form.repoUrl} onChange={handleChange} placeholder="https://github.com/your-repo" />
               </label>
               <label>
                 Live URL
-                <input name="liveUrl" value={form.liveUrl} onChange={handleChange} placeholder="https://your-project.app" />
+                <input type="url" name="liveUrl" value={form.liveUrl} onChange={handleChange} placeholder="https://your-project.app" />
               </label>
             </div>
 
             <label>
               Screenshot URL
-              <input name="screenshotUrl" value={form.screenshotUrl} onChange={handleChange} placeholder="https://images.unsplash.com/..." />
+              <input type="url" name="screenshotUrl" value={form.screenshotUrl} onChange={handleChange} placeholder="https://images.unsplash.com/..." />
             </label>
 
-            <button type="submit" className="primary-button">Publish project</button>
+            {error ? <p className="error-text" role="alert">{error}</p> : null}
+            <button type="submit" className="primary-button" disabled={publishing}>
+              {publishing ? 'Publishing…' : 'Publish project'}
+            </button>
           </form>
         </div>
       </section>

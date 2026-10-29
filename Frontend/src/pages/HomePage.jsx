@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import ProjectCard from '../components/ProjectCard.jsx';
 import { apiRequest } from '../services/api.js';
 
 export default function HomePage() {
+  const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
   const [featuredProject, setFeaturedProject] = useState(null);
+  const [search, setSearch] = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
     async function loadProjects() {
@@ -14,12 +17,18 @@ export default function HomePage() {
         setProjects(response.projects || []);
         setFeaturedProject((response.projects || []).find((project) => project.status === 'featured') || (response.projects || [])[0]);
       } catch (error) {
-        console.error(error);
+        setError('Projects are unavailable right now. Please try again shortly.');
       }
     }
 
     loadProjects();
   }, []);
+
+  const submitSearch = (event) => {
+    event.preventDefault();
+    const query = search.trim();
+    navigate(query ? `/discover?search=${encodeURIComponent(query)}` : '/discover');
+  };
 
   return (
     <div className="page-shell">
@@ -34,22 +43,19 @@ export default function HomePage() {
             </p>
             <div className="hero-actions">
               <Link to="/discover" className="primary-button">Explore projects</Link>
-              <Link to="/publish" className="secondary-button light">Publish a project</Link>
+              <Link to="/publish" className="secondary-button">Publish a project</Link>
             </div>
-            <div className="stat-row">
-              <div>
-                <strong>12k+</strong>
-                <span>Projects</span>
-              </div>
-              <div>
-                <strong>4.8/5</strong>
-                <span>Average review score</span>
-              </div>
-              <div>
-                <strong>2.4k</strong>
-                <span>Active builders</span>
-              </div>
-            </div>
+            <form className="home-search" onSubmit={submitSearch} role="search">
+              <label className="visually-hidden" htmlFor="home-project-search">Search projects</label>
+              <input
+                id="home-project-search"
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search projects, ideas, or technologies"
+              />
+              <button type="submit" className="secondary-button">Search</button>
+            </form>
           </div>
 
           <div className="hero-visual">
@@ -76,6 +82,8 @@ export default function HomePage() {
             <span className="eyebrow">Featured work</span>
             <h2>Fresh ideas from the community</h2>
           </div>
+          {error ? <div className="empty-state" role="alert">{error}</div> : null}
+          {!error && projects.length === 0 ? <div className="empty-state">No projects have been published yet.</div> : null}
           <div className="project-grid three-up">
             {(projects || []).slice(0, 3).map((project) => (
               <ProjectCard key={project.id} project={project} />

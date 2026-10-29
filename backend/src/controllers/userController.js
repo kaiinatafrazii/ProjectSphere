@@ -12,7 +12,6 @@ export async function getUserProfile(req, res) {
       user: {
         id: user.id,
         name: user.name,
-        email: user.email,
         bio: user.bio || '',
         location: user.location || '',
         skills: user.skills || [],
@@ -22,6 +21,7 @@ export async function getUserProfile(req, res) {
       },
     });
   } catch (error) {
-    return sendError(res, 500, error.message || 'Unable to load profile.');
+    console.error('Profile retrieval failed:', error);
+    return sendError(res, 500, 'Unable to load profile right now.');
   }
 }

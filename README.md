@@ -38,19 +38,13 @@ npm install
 
 ## 2. Configure environment
 
-Create `backend/.env` from `backend/.env.example` and update it with your local MySQL values.
+Create `Frontend/.env` from `Frontend/.env.example` and `backend/.env` from `backend/.env.example`. The checked-in `.env` files are ignored; update the backend file with your local MySQL values and a long random JWT secret.
 
 ```env
-PORT=5000
-JWT_SECRET=replace_with_a_secure_secret
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=your_mysql_password
-DB_NAME=projectsphere
-NODE_ENV=development
-FRONTEND_URL=http://localhost:5173
+VITE_API_URL=http://localhost:5000/api
 ```
+
+The backend environment variables are documented in `backend/.env.example`.
 
 ## 3. Initialize MySQL schema
 
@@ -101,6 +95,8 @@ npm start
 - `GET /api/health`
 - `POST /api/auth/register`
 - `POST /api/auth/login`
+- `GET /api/auth/me`
+- `POST /api/auth/logout`
 - `GET /api/projects`
 - `GET /api/projects/:id`
 - `POST /api/projects`
@@ -117,5 +113,7 @@ npm test
 ## Notes
 
 - The frontend and backend are intentionally separated under their respective directories.
+- Authentication uses an HttpOnly session cookie; the JWT is not exposed to browser JavaScript or stored in `localStorage`.
+- Run the updated migration to add the `auth_sessions` table. MySQL sessions are revocable and expire after seven days.
 - The root directory contains only the required two application folders and the two root files listed in this project structure.
 - A local MySQL instance is expected for the database-backed flow.

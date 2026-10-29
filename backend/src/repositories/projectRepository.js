@@ -17,6 +17,13 @@ export async function findProjectById(id) {
   return rows[0] || null;
 }
 
+export async function listProjectReviews(projectId) {
+  return query(
+    'SELECT project_reviews.*, users.name AS userName FROM project_reviews JOIN users ON users.id = project_reviews.user_id WHERE project_reviews.project_id = ? ORDER BY project_reviews.created_at DESC',
+    [projectId]
+  );
+}
+
 export async function createProject(payload) {
   const result = await query(
     'INSERT INTO projects (id, user_id, title, tagline, category, tech_stack, summary, overview, repo_url, live_url, screenshot_url, likes, views, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
