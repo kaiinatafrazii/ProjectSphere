@@ -105,13 +105,9 @@ async function main() {
       for (const { definition, rows } of tables) {
         const columns = definition.columns;
         const placeholders = columns.map(() => '?').join(', ');
-        const updates = columns
-          .filter((column) => column !== 'id')
-          .map((column) => `${column} = excluded.${column}`)
-          .join(', ');
         const statement = db.prepare(
           `INSERT INTO ${definition.name} (${columns.join(', ')}) VALUES (${placeholders})
-           ON CONFLICT (id) DO UPDATE SET ${updates}`
+           ON CONFLICT (id) DO NOTHING`
         );
         for (const row of rows) statement.run(...definition.map(row));
         counts[definition.name] = rows.length;
@@ -129,6 +125,7 @@ async function main() {
 }
 
 main().catch((error) => {
+  if (db.open) db.close();
   console.error(`MySQL-to-SQLite import failed: ${error.message}`);
   process.exitCode = 1;
 });

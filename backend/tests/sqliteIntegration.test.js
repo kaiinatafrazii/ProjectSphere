@@ -4,10 +4,11 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import app from '../src/app.js';
 import { db } from '../src/config/db.js';
 
-const backendDirectory = path.resolve(import.meta.dirname, '..');
+const backendDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 test('SQLite initializes persistently and supports the account, project, review, bookmark, and moderation flows', async (context) => {
   const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map(({ name }) => name);
@@ -198,4 +199,18 @@ test('SQLite initializes persistently and supports the account, project, review,
   });
   assert.equal(failureResponse.status, 404);
   assert.doesNotMatch(JSON.stringify(failureResponse.body), /SQLITE|database|persistent\.sqlite/i);
+
+  db.close();
+  const unavailableDatabaseResponse = await request('/contact', {
+    method: 'POST',
+    body: {
+      name: 'Test Sender',
+      email: 'sender@example.test',
+      subject: 'Database failure handling',
+      message: 'This request runs after the isolated test database closes.',
+    },
+  });
+  assert.equal(unavailableDatabaseResponse.status, 500);
+  assert.equal(unavailableDatabaseResponse.body.message, 'We could not send your message right now. Please try again later.');
+  assert.doesNotMatch(JSON.stringify(unavailableDatabaseResponse.body), /SQLITE|database|persistent\.sqlite/i);
 });
