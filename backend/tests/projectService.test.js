@@ -25,7 +25,7 @@ test('reviewing a project updates the existing account rating', async (context) 
 
   assert.equal(result.id, 'review-existing');
   const insert = statements.find((entry) => entry.sql.includes('INSERT INTO project_reviews'));
-  assert.match(insert.sql, /ON DUPLICATE KEY UPDATE/);
+  assert.match(insert.sql, /ON CONFLICT \(project_id, user_id\) DO UPDATE/);
   assert.deepEqual(insert.params.slice(1), ['project-1', 'reviewer-1', 4, 'Useful project.']);
 });
 

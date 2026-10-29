@@ -53,7 +53,12 @@ export async function createProject(payload) {
 
 export async function createReview({ id, projectId, userId, rating, comment }) {
   const result = await query(
-    'INSERT INTO project_reviews (id, project_id, user_id, rating, comment) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE rating = VALUES(rating), comment = VALUES(comment)',
+    `INSERT INTO project_reviews (id, project_id, user_id, rating, comment)
+     VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT (project_id, user_id) DO UPDATE SET
+       rating = excluded.rating,
+       comment = excluded.comment,
+       updated_at = CURRENT_TIMESTAMP`,
     [id, projectId, userId, rating, comment]
   );
   return result;

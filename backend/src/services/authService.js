@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
-import { memoryStore, pool, query } from '../config/db.js';
+import { pool, query } from '../config/db.js';
 
 const SESSION_COOKIE = 'projectsphere_session';
 const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
@@ -53,7 +53,7 @@ export async function createSession(userId) {
 export async function isSessionActive(sessionId, userId) {
   if (!sessionId) return false;
   const rows = await query(
-    'SELECT * FROM auth_sessions WHERE id = ? AND revoked_at IS NULL AND expires_at > CURRENT_TIMESTAMP',
+    'SELECT * FROM auth_sessions WHERE id = ? AND revoked_at IS NULL AND datetime(expires_at) > CURRENT_TIMESTAMP',
     [sessionId]
   );
   const session = rows[0];
@@ -66,11 +66,6 @@ export async function isSessionActive(sessionId, userId) {
 
 export async function revokeSession(sessionId) {
   if (!sessionId) return;
-  const demoSession = memoryStore.sessions.find((session) => session.id === sessionId);
-  if (demoSession) {
-    demoSession.revokedAt = new Date().toISOString();
-    return;
-  }
   const [result] = await pool.execute(
     'UPDATE auth_sessions SET revoked_at = CURRENT_TIMESTAMP WHERE id = ? AND revoked_at IS NULL',
     [sessionId]

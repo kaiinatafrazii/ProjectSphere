@@ -11,7 +11,7 @@ export async function saveProject(req, res) {
     if (!projects.length) return sendError(res, 404, 'Project not found.');
 
     await pool.execute(
-      'INSERT INTO saved_projects (id, user_id, project_id) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE project_id = VALUES(project_id)',
+      'INSERT INTO saved_projects (id, user_id, project_id) VALUES (?, ?, ?) ON CONFLICT (user_id, project_id) DO NOTHING',
       [uuidv4(), req.user.id, req.params.id]
     );
     return sendSuccess(res, { saved: true });

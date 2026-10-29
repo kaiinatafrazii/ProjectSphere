@@ -84,7 +84,10 @@ export async function listAdminProjects(req, res) {
          FROM project_reviews GROUP BY project_id
        ) r ON r.project_id = p.id
        ${clause}
-       ORDER BY FIELD(p.status, 'pending', 'changes_requested', 'rejected', 'draft', 'published', 'featured', 'removed'), p.created_at DESC
+       ORDER BY CASE p.status
+         WHEN 'pending' THEN 0 WHEN 'changes_requested' THEN 1 WHEN 'rejected' THEN 2
+         WHEN 'draft' THEN 3 WHEN 'published' THEN 4 WHEN 'featured' THEN 5 ELSE 6
+       END, p.created_at DESC
        LIMIT ? OFFSET ?`,
       [...params, limit, offset]
     );
@@ -108,7 +111,7 @@ export async function moderateProject(req, res) {
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
-    const [rows] = await connection.execute('SELECT status FROM projects WHERE id = ? FOR UPDATE', [req.params.id]);
+    const [rows] = await connection.execute('SELECT status FROM projects WHERE id = ?', [req.params.id]);
     if (!rows.length) {
       await connection.rollback();
       return sendError(res, 404, 'Project not found.');
