@@ -9,6 +9,10 @@ export default function ProfilePage() {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({ name: '', bio: '', location: '', skills: '' });
 
   useEffect(() => {
     async function loadProfile() {
@@ -18,6 +22,12 @@ export default function ProfilePage() {
         const userResponse = await apiRequest(`/users/${user.id}`);
         const projectResponse = await apiRequest('/projects');
         setProfile(userResponse.user);
+        setForm({
+          name: userResponse.user.name || '',
+          bio: userResponse.user.bio || '',
+          location: userResponse.user.location || '',
+          skills: (userResponse.user.skills || []).join(', '),
+        });
         setProjects((projectResponse.projects || []).filter((project) => project.owner?.id === user.id));
       } catch (error) {
         setError(error.message || 'Unable to load your profile.');
@@ -28,6 +38,31 @@ export default function ProfilePage() {
 
     loadProfile();
   }, [user]);
+
+  const saveProfile = async (event) => {
+    event.preventDefault();
+    setError('');
+    setSuccess('');
+    setSaving(true);
+    try {
+      const response = await apiRequest('/users/me', {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: form.name,
+          bio: form.bio,
+          location: form.location,
+          skills: form.skills.split(',').map((skill) => skill.trim()).filter(Boolean),
+        }),
+      });
+      setProfile((current) => ({ ...current, ...response.user }));
+      setSuccess('Your profile was updated.');
+      setEditing(false);
+    } catch (saveError) {
+      setError(saveError.message || 'Unable to update your profile.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (loading) {
     return <div className="page-shell center-block"><div className="empty-state" role="status">Loading your profile…</div></div>;
@@ -56,8 +91,23 @@ export default function ProfilePage() {
                   <span key={item}>{item}</span>
                 ))}
               </div>
+              <button type="button" className="secondary-button" onClick={() => { setEditing((current) => !current); setError(''); }}>
+                {editing ? 'Cancel editing' : 'Edit profile'}
+              </button>
             </div>
           </div>
+
+          {error ? <p className="error-text" role="alert">{error}</p> : null}
+          {success ? <p className="success-text" role="status">{success}</p> : null}
+          {editing ? (
+            <form className="card-panel stacked-form profile-edit-form" onSubmit={saveProfile}>
+              <label>Name<input value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} maxLength={100} required /></label>
+              <label>Bio<textarea value={form.bio} onChange={(event) => setForm((current) => ({ ...current, bio: event.target.value }))} rows={4} maxLength={1000} /></label>
+              <label>Location<input value={form.location} onChange={(event) => setForm((current) => ({ ...current, location: event.target.value }))} maxLength={100} /></label>
+              <label>Skills (comma separated)<input value={form.skills} onChange={(event) => setForm((current) => ({ ...current, skills: event.target.value }))} placeholder="React, Node.js" /></label>
+              <button className="primary-button" type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save profile'}</button>
+            </form>
+          ) : null}
 
           <div className="profile-summary-grid">
             <div className="summary-box">

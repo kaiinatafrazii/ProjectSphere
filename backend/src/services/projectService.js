@@ -2,6 +2,27 @@ import { createProject, createReview, findProjectById, listProjectReviews, listP
 import { findUserById } from '../repositories/userRepository.js';
 import { generateId } from './authService.js';
 
+function parseTechStack(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value !== 'string') return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function getRatingSummary(reviews) {
+  const count = reviews.length;
+  return {
+    reviewCount: count,
+    ratingAverage: count
+      ? Number((reviews.reduce((sum, review) => sum + Number(review.rating), 0) / count).toFixed(1))
+      : null,
+  };
+}
+
 export async function getProjects(filters = {}) {
   const projects = await listProjects(filters);
   return Promise.all(
@@ -13,7 +34,7 @@ export async function getProjects(filters = {}) {
         title: project.title,
         tagline: project.tagline,
         category: project.category,
-        techStack: project.tech_stack ? JSON.parse(project.tech_stack) : project.techStack || [],
+        techStack: parseTechStack(project.tech_stack ?? project.techStack),
         summary: project.summary,
         overview: project.overview,
         repoUrl: project.repo_url || project.repoUrl,
@@ -29,7 +50,9 @@ export async function getProjects(filters = {}) {
           rating: review.rating,
           comment: review.comment,
           userName: review.userName || 'Community member',
+          createdAt: review.created_at || review.createdAt,
         })),
+        ...getRatingSummary(reviews),
       };
     })
   );
@@ -45,7 +68,7 @@ export async function getProjectByIdService(id) {
     title: project.title,
     tagline: project.tagline,
     category: project.category,
-    techStack: project.tech_stack ? JSON.parse(project.tech_stack) : project.techStack || [],
+    techStack: parseTechStack(project.tech_stack ?? project.techStack),
     summary: project.summary,
     overview: project.overview,
     repoUrl: project.repo_url || project.repoUrl,
@@ -61,7 +84,9 @@ export async function getProjectByIdService(id) {
       rating: Number(review.rating),
       comment: review.comment,
       userName: review.userName || 'Community member',
+      createdAt: review.created_at || review.createdAt,
     })),
+    ...getRatingSummary(reviews),
   };
 }
 
@@ -81,7 +106,7 @@ export async function publishProjectService({ userId, title, tagline, category, 
     screenshotUrl,
     likes: 0,
     views: 0,
-    status: 'published',
+    status: 'pending',
   });
   return { id };
 }
@@ -91,8 +116,17 @@ export async function addReviewService({ projectId, userId, rating, comment }) {
   if (!project) {
     throw Object.assign(new Error('Project not found.'), { statusCode: 404 });
   }
+  if ((project.user_id || project.userId) === userId) {
+    throw Object.assign(new Error('Project owners cannot review their own projects.'), { statusCode: 403 });
+  }
 
   const id = generateId();
   await createReview({ id, projectId, userId, rating, comment });
-  return { id, message: 'Review submitted successfully.' };
+  const savedReview = (await listProjectReviews(projectId)).find(
+    (review) => (review.user_id || review.userId) === userId
+  );
+  return {
+    id: savedReview?.id || id,
+    message: 'Review submitted successfully. Your rating was saved.',
+  };
 }

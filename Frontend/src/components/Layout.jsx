@@ -107,59 +107,69 @@ export default function Layout() {
 
   return (
     <div className="app-shell">
-      <header ref={headerRef} className={scrolled ? 'topbar is-scrolled' : 'topbar'}>
-        <div className="container nav-wrap">
-          <NavLink to="/" end className="brand" aria-label="ProjectSphere home">
-            <img className="brand-mark-image" src="/favicon.svg" alt="" />
-            <span>ProjectSphere</span>
-          </NavLink>
-          {isAuthRoute ? <Link to="/" className="header-back-home">Back to Home</Link> : null}
-
-          <button
-            type="button"
-            className="menu-toggle"
-            aria-expanded={menuOpen}
-            aria-controls="primary-navigation"
-            aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
-            onClick={() => setMenuOpen((open) => !open)}
-          >
-            <span />
-            <span />
-            <span />
-          </button>
-
-          <nav id="primary-navigation" className={menuOpen ? 'main-nav is-open' : 'main-nav'} aria-label="Main navigation">
-            {landingSections.map(([id, label]) => (
-              <a
-                key={id}
-                href={`/#${id}`}
-                className={activeSection === id ? 'active' : undefined}
-                aria-current={activeSection === id ? 'location' : undefined}
-                onClick={(event) => navigateToSection(event, id)}
-              >
-                {label}
-              </a>
-            ))}
-          </nav>
-
-          <div className="nav-actions">
-            {loading ? <span className="user-greeting" role="status">Checking session…</span> : user ? (
-              <>
-                <Link to="/profile" className="secondary-button nav-profile">My profile</Link>
-                <Link to="/publish" className="primary-button">Share project</Link>
-                <button className="secondary-button" type="button" onClick={handleLogout} disabled={loggingOut}>
-                  {loggingOut ? 'Logging out…' : 'Logout'}
-                </button>
-              </>
-            ) : (
-              <>
-                <NavLink to="/login" className="secondary-button">Login</NavLink>
-                <NavLink to="/register" className="primary-button">Get Started</NavLink>
-              </>
-            )}
+      {isAuthRoute ? (
+        <header className="topbar auth-topbar">
+          <div className="container auth-topbar-content">
+            <Link to="/" className="header-back-home">← Back to Home</Link>
           </div>
-        </div>
-      </header>
+        </header>
+      ) : (
+        <header ref={headerRef} className={scrolled ? 'topbar is-scrolled' : 'topbar'}>
+          <div className="container nav-wrap">
+            <NavLink to="/" end className="brand" aria-label="ProjectSphere home">
+              <img className="brand-mark-image" src="/favicon.svg" alt="" />
+              <span>ProjectSphere</span>
+            </NavLink>
+
+            <button
+              type="button"
+              className="menu-toggle"
+              aria-expanded={menuOpen}
+              aria-controls="primary-navigation"
+              aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+              onClick={() => setMenuOpen((open) => !open)}
+            >
+              <span />
+              <span />
+              <span />
+            </button>
+
+            <nav id="primary-navigation" className={menuOpen ? 'main-nav is-open' : 'main-nav'} aria-label="Main navigation">
+              {landingSections.map(([id, label]) => (
+                <a
+                  key={id}
+                  href={`/#${id}`}
+                  className={activeSection === id ? 'active' : undefined}
+                  aria-current={activeSection === id ? 'location' : undefined}
+                  onClick={(event) => navigateToSection(event, id)}
+                >
+                  {label}
+                </a>
+              ))}
+            </nav>
+
+            <div className="nav-actions">
+              {loading ? <span className="user-greeting" role="status">Checking session…</span> : user ? (
+                <>
+                  <Link to="/dashboard" className="secondary-button nav-profile">Dashboard</Link>
+                  <Link to="/saved" className="secondary-button nav-profile">Saved</Link>
+                  {user.role === 'admin' ? <Link to="/admin" className="secondary-button nav-profile">Admin</Link> : null}
+                  <Link to="/profile" className="secondary-button nav-profile">My profile</Link>
+                  <Link to="/publish" className="primary-button">Share project</Link>
+                  <button className="secondary-button" type="button" onClick={handleLogout} disabled={loggingOut}>
+                    {loggingOut ? 'Logging out…' : 'Logout'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <NavLink to="/login" className="secondary-button">Login</NavLink>
+                  <NavLink to="/register" className="primary-button">Get Started</NavLink>
+                </>
+              )}
+            </div>
+          </div>
+        </header>
+      )}
 
       <main>
         {logoutError ? (
@@ -169,23 +179,25 @@ export default function Layout() {
         ) : null}
         <Outlet />
       </main>
-      <footer className="site-footer">
-        <div className="container footer-content">
-          <NavLink to="/" className="brand" aria-label="ProjectSphere home">
-            <img className="brand-mark-image" src="/favicon.svg" alt="" />
-            <span>ProjectSphere</span>
-          </NavLink>
-          <p>Discover, publish, and improve technical work together.</p>
-          <nav aria-label="Footer navigation">
-            {landingSections.map(([id, label]) => (
-              <a key={id} href={`/#${id}`} onClick={(event) => navigateToSection(event, id)}>{label}</a>
-            ))}
-            <Link to="/privacy">Privacy Policy</Link>
-            <Link to="/terms">Terms &amp; Conditions</Link>
-          </nav>
-          <small>© {new Date().getFullYear()} ProjectSphere</small>
-        </div>
-      </footer>
+      {!isAuthRoute ? (
+        <footer className="site-footer">
+          <div className="container footer-content">
+            <NavLink to="/" className="brand" aria-label="ProjectSphere home">
+              <img className="brand-mark-image" src="/favicon.svg" alt="" />
+              <span>ProjectSphere</span>
+            </NavLink>
+            <p>Discover, publish, and improve technical work together.</p>
+            <nav aria-label="Footer navigation">
+              {landingSections.map(([id, label]) => (
+                <a key={id} href={`/#${id}`} onClick={(event) => navigateToSection(event, id)}>{label}</a>
+              ))}
+              <Link to="/privacy">Privacy Policy</Link>
+              <Link to="/terms">Terms &amp; Conditions</Link>
+            </nav>
+            <small>© {new Date().getFullYear()} ProjectSphere</small>
+          </div>
+        </footer>
+      ) : null}
     </div>
   );
 }

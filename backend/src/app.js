@@ -7,6 +7,7 @@ import userRoutes from './routes/userRoutes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { rateLimit } from 'express-rate-limit';
 import { submitContactMessage } from './controllers/contactController.js';
+import adminRoutes from './routes/adminRoutes.js';
 
 dotenv.config();
 
@@ -48,6 +49,7 @@ app.post(
   submitContactMessage
 );
 app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/users', userRoutes);
 

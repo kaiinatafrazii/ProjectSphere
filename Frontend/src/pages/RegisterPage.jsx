@@ -31,7 +31,7 @@ export default function RegisterPage() {
 
     try {
       await register(form);
-      navigate('/discover', { replace: true });
+      navigate('/dashboard', { replace: true });
     } catch (submitError) {
       setError(submitError.message);
     }

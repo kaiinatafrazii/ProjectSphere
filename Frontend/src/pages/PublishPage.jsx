@@ -1,9 +1,11 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../services/api.js';
 
 export default function PublishPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const editId = searchParams.get('edit');
   const [form, setForm] = useState({
     title: '',
     tagline: '',
@@ -17,6 +19,42 @@ export default function PublishPage() {
   });
   const [error, setError] = useState('');
   const [publishing, setPublishing] = useState(false);
+  const [loadingProject, setLoadingProject] = useState(Boolean(editId));
+
+  useEffect(() => {
+    if (!editId) return undefined;
+    let active = true;
+    apiRequest('/projects/mine')
+      .then(({ projects }) => {
+        const project = projects.find((item) => item.id === editId);
+        if (!project) {
+          setError('That project is not available in your account.');
+          return;
+        }
+        if (active) {
+          setForm({
+            title: project.title,
+            tagline: project.tagline,
+            category: project.category,
+            techStack: project.techStack.join(', '),
+            summary: project.summary,
+            overview: project.overview,
+            repoUrl: project.repoUrl || '',
+            liveUrl: project.liveUrl || '',
+            screenshotUrl: project.screenshotUrl || '',
+          });
+        }
+      })
+      .catch((loadError) => {
+        if (active) setError(loadError.message || 'Unable to load this project.');
+      })
+      .finally(() => {
+        if (active) setLoadingProject(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [editId]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -30,14 +68,15 @@ export default function PublishPage() {
     setError('');
     setPublishing(true);
     try {
-      await apiRequest('/projects', {
-        method: 'POST',
-        body: JSON.stringify({
-          ...form,
-          techStack: form.techStack.split(',').map((item) => item.trim()).filter(Boolean),
-        }),
+      const payload = {
+        ...form,
+        techStack: form.techStack.split(',').map((item) => item.trim()).filter(Boolean),
+      };
+      await apiRequest(editId ? `/projects/${encodeURIComponent(editId)}` : '/projects', {
+        method: editId ? 'PUT' : 'POST',
+        body: JSON.stringify(payload),
       });
-      navigate('/discover', { replace: true, state: { notice: 'Your project has been published.' } });
+      navigate('/dashboard', { replace: true, state: { notice: 'Your project was submitted for review.' } });
     } catch (error) {
       setError(error.message || 'Unable to publish your project.');
     } finally {
@@ -50,10 +89,11 @@ export default function PublishPage() {
       <section className="section-block">
         <div className="container">
           <div className="section-heading left-aligned">
-            <span className="eyebrow">Publish project</span>
-            <h2>Share your work with the community</h2>
+            <span className="eyebrow">{editId ? 'Edit project' : 'Publish project'}</span>
+            <h2>{editId ? 'Update your project' : 'Share your work with the community'}</h2>
           </div>
 
+          {loadingProject ? <p role="status">Loading your project…</p> : (
           <form className="stacked-form" onSubmit={handleSubmit}>
             <div className="form-grid two-up">
               <label>
@@ -111,9 +151,10 @@ export default function PublishPage() {
 
             {error ? <p className="error-text" role="alert">{error}</p> : null}
             <button type="submit" className="primary-button" disabled={publishing}>
-              {publishing ? 'Publishing…' : 'Publish project'}
+              {publishing ? 'Submitting…' : editId ? 'Save and resubmit' : 'Submit for review'}
             </button>
           </form>
+          )}
         </div>
       </section>
     </div>

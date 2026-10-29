@@ -2,16 +2,20 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import ProjectCard from '../components/ProjectCard.jsx';
 import { apiRequest } from '../services/api.js';
+import { useAuth } from '../context/AuthContext.jsx';
 
 const categories = ['all', 'Productivity', 'AI/ML', 'Developer Tools', 'Research', 'Frontend', 'Backend'];
 
 export default function DiscoverPage() {
   const location = useLocation();
+  const { user } = useAuth();
   const [projects, setProjects] = useState([]);
+  const [savedProjectIds, setSavedProjectIds] = useState([]);
   const [search, setSearch] = useState(() => new URLSearchParams(location.search).get('search') || '');
   const [category, setCategory] = useState('all');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [bookmarkError, setBookmarkError] = useState('');
 
   useEffect(() => {
     async function fetchProjects() {
@@ -23,6 +27,18 @@ export default function DiscoverPage() {
 
         const response = await apiRequest(`/projects?${params.toString()}`);
         setProjects(response.projects || []);
+        if (user) {
+          try {
+            const saved = await apiRequest('/users/me/bookmarks');
+            setSavedProjectIds((saved.projects || []).map((project) => project.id));
+            setBookmarkError('');
+          } catch (savedError) {
+            setBookmarkError(savedError.message || 'Saved-project status is unavailable.');
+          }
+        } else {
+          setSavedProjectIds([]);
+          setBookmarkError('');
+        }
       } catch (error) {
         setProjects([]);
         setError('Unable to load projects. Check your connection and try again.');
@@ -32,7 +48,7 @@ export default function DiscoverPage() {
     }
 
     fetchProjects();
-  }, [category, search]);
+  }, [category, search, user]);
 
   useEffect(() => {
     setSearch(new URLSearchParams(location.search).get('search') || '');
@@ -72,6 +88,7 @@ export default function DiscoverPage() {
           </div>
 
           {location.state?.notice ? <p className="success-text" role="status">{location.state.notice}</p> : null}
+          {bookmarkError ? <p className="error-text" role="status">{bookmarkError}</p> : null}
           {loading ? (
             <div className="empty-state" role="status">Loading projects…</div>
           ) : error ? (
@@ -81,7 +98,14 @@ export default function DiscoverPage() {
           ) : (
             <div className="project-grid">
               {projects.map((project) => (
-                <ProjectCard key={project.id} project={project} />
+                <ProjectCard
+                  key={project.id}
+                  project={project}
+                  initialSaved={savedProjectIds.includes(project.id)}
+                  onSavedChange={(saved) => setSavedProjectIds((current) => saved
+                    ? [...new Set([...current, project.id])]
+                    : current.filter((id) => id !== project.id))}
+                />
               ))}
             </div>
           )}

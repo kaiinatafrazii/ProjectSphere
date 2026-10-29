@@ -2,18 +2,22 @@ import { query } from '../config/db.js';
 
 export async function listProjects(filters = {}) {
   const { category, search } = filters;
-  const rows = await query('SELECT * FROM projects ORDER BY created_at DESC');
-
-  return rows.filter((project) => {
-    const matchesCategory = !category || category === 'all' || project.category === category;
-    const needle = search ? search.toLowerCase() : '';
-    const matchesSearch = !search || [project.title, project.tagline, project.summary].join(' ').toLowerCase().includes(needle);
-    return matchesCategory && matchesSearch;
-  });
+  const clauses = ["status IN ('published', 'featured')"];
+  const params = [];
+  if (category && category !== 'all') {
+    clauses.push('category = ?');
+    params.push(category);
+  }
+  if (search) {
+    clauses.push('(title LIKE ? OR tagline LIKE ? OR summary LIKE ? OR overview LIKE ?)');
+    const term = `%${search}%`;
+    params.push(term, term, term, term);
+  }
+  return query(`SELECT * FROM projects WHERE ${clauses.join(' AND ')} ORDER BY created_at DESC`, params);
 }
 
 export async function findProjectById(id) {
-  const rows = await query('SELECT * FROM projects WHERE id = ?', [id]);
+  const rows = await query("SELECT * FROM projects WHERE id = ? AND status IN ('published', 'featured')", [id]);
   return rows[0] || null;
 }
 
@@ -49,7 +53,7 @@ export async function createProject(payload) {
 
 export async function createReview({ id, projectId, userId, rating, comment }) {
   const result = await query(
-    'INSERT INTO project_reviews (id, project_id, user_id, rating, comment) VALUES (?, ?, ?, ?, ?)',
+    'INSERT INTO project_reviews (id, project_id, user_id, rating, comment) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE rating = VALUES(rating), comment = VALUES(comment)',
     [id, projectId, userId, rating, comment]
   );
   return result;

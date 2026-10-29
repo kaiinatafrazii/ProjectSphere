@@ -53,11 +53,29 @@ publishing an invented domain.
 
 ## 3. Initialize MySQL schema
 
-Use the migration script to create the base schema.
+Apply the base schema and then the additive dashboard/moderation migration. The second migration preserves existing records and adds roles/statuses, a review uniqueness constraint, and moderation history.
 
 ```bash
 mysql -u your_user -p your_database < backend/migrations/001_init.sql
+mysql -u your_user -p projectsphere < backend/migrations/002_dashboard_moderation.sql
 ```
+
+Before applying migration 002, check that existing reviews do not contain duplicate user/project pairs; the migration intentionally does not delete or merge existing reviews:
+
+```sql
+SELECT project_id, user_id, COUNT(*) AS duplicate_count
+FROM project_reviews
+GROUP BY project_id, user_id
+HAVING COUNT(*) > 1;
+```
+
+Resolve any reported duplicates according to your data-retention policy before adding the unique constraint. Create an administrator only by promoting a trusted, already-registered account through a controlled database operation:
+
+```sql
+UPDATE users SET role = 'admin' WHERE email = 'trusted-admin@example.com';
+```
+
+Do not expose an admin role selector in registration or profile forms.
 
 Optionally seed demo data:
 
@@ -104,10 +122,20 @@ npm start
 - `GET /api/auth/me`
 - `POST /api/auth/logout`
 - `GET /api/projects`
+- `GET /api/projects/dashboard` (authenticated user's database-backed stats)
+- `GET /api/projects/mine` (authenticated user's projects and moderation feedback)
 - `GET /api/projects/:id`
-- `POST /api/projects`
+- `POST /api/projects` (creates a pending submission)
+- `PUT /api/projects/:id` and `DELETE /api/projects/:id` (owner-scoped editing/removal)
 - `POST /api/projects/:id/reviews`
+- `GET /api/admin/overview`
+- `GET /api/admin/projects`
+- `POST /api/admin/projects/:id/moderate`
+- `GET /api/admin/users`
+- `GET /api/admin/history`
 - `GET /api/users/:id`
+
+Admin endpoints check the user's current database role for every request. Project moderation actions are transactionally recorded; rejecting, requesting changes, or removing a submission requires written feedback. Public discovery exposes only published/featured projects. A project owner cannot review their own project, and the database constraint plus upsert behavior limits each account to one editable review per project.
 
 ## 7. Tests
 

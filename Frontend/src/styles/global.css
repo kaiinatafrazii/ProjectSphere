@@ -82,6 +82,32 @@ select:focus-visible {
   border-bottom: 1px solid var(--line);
 }
 
+.auth-topbar {
+  position: relative;
+  backdrop-filter: none;
+  background: transparent;
+  border-bottom: 0;
+}
+
+.auth-topbar-content {
+  display: flex;
+  min-height: 72px;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.header-back-home {
+  display: inline-flex;
+  align-items: center;
+  min-height: 42px;
+  color: var(--accent);
+  font-weight: 650;
+}
+
+.header-back-home:hover {
+  color: var(--ink);
+}
+
 .nav-wrap {
   display: flex;
   align-items: center;
@@ -537,7 +563,7 @@ select:focus-visible {
 }
 
 .auth-page {
-  min-height: calc(100vh - 90px);
+  min-height: calc(100vh - 72px);
   display: grid;
   place-items: center;
 }
@@ -1345,6 +1371,304 @@ select:focus-visible {
   justify-self: end;
 }
 
+.dashboard-heading,
+.dashboard-section-heading,
+.dashboard-project-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.dashboard-heading {
+  margin-bottom: 28px;
+}
+
+.dashboard-heading .section-heading {
+  margin: 0;
+}
+
+.dashboard-heading h1,
+.dashboard-section h2 {
+  margin: 0 0 8px;
+}
+
+.dashboard-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 28px 0 42px;
+}
+
+.dashboard-stats article {
+  display: flex;
+  min-height: 100px;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel-strong);
+}
+
+.dashboard-stats span,
+.dashboard-project-info small,
+.admin-record small {
+  color: var(--muted);
+}
+
+.dashboard-stats strong {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.dashboard-section {
+  margin: 36px 0;
+}
+
+.dashboard-section-heading {
+  margin-bottom: 18px;
+}
+
+.dashboard-section-heading h2 {
+  margin: 0;
+}
+
+.dashboard-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.dashboard-filters input,
+.dashboard-filters select,
+.admin-feedback-field textarea {
+  min-height: 42px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-strong);
+  color: var(--ink);
+}
+
+.dashboard-project-list,
+.admin-record-list {
+  display: grid;
+  gap: 12px;
+}
+
+.dashboard-project,
+.admin-record {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel-strong);
+}
+
+.dashboard-project > img,
+.dashboard-project-placeholder {
+  width: 116px;
+  height: 82px;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.dashboard-project-placeholder {
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.dashboard-project-info,
+.admin-record-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.dashboard-project-title {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.dashboard-project-title h3 {
+  margin: 0;
+}
+
+.dashboard-project-info p,
+.admin-record p {
+  margin: 5px 0;
+  color: var(--muted);
+}
+
+.dashboard-project-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-badge {
+  display: inline-flex;
+  padding: 4px 9px;
+  border-radius: 99px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 650;
+  text-transform: capitalize;
+}
+
+.status-published,
+.status-featured {
+  background: rgba(20, 92, 90, 0.12);
+  color: var(--accent);
+}
+
+.status-pending {
+  background: #fff3d4;
+  color: #735515;
+}
+
+.status-rejected,
+.status-changes_requested {
+  background: #ffebe8;
+  color: #9c3428;
+}
+
+.moderation-feedback {
+  padding: 10px 12px;
+  border-left: 3px solid var(--accent);
+  background: var(--surface);
+}
+
+.activity-list {
+  display: grid;
+  gap: 0;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.activity-list li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px 18px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.activity-list li > div {
+  display: grid;
+  gap: 2px;
+}
+
+.activity-list span,
+.activity-list p,
+.activity-list time {
+  color: var(--muted);
+}
+
+.activity-list p {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.activity-list time {
+  font-size: 0.85rem;
+}
+
+.dashboard-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 24px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.dashboard-tabs button {
+  padding: 10px 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--muted);
+}
+
+.dashboard-tabs button.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 650;
+}
+
+.admin-record {
+  align-items: flex-start;
+}
+
+.admin-project-image {
+  width: 150px;
+  height: 110px;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.admin-feedback-field {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0;
+  font-weight: 600;
+}
+
+.admin-feedback-field textarea {
+  width: 100%;
+  resize: vertical;
+}
+
+.admin-user-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1.5fr 0.7fr 0.7fr;
+  align-items: center;
+}
+
+.admin-user-row span {
+  overflow-wrap: anywhere;
+}
+
+.admin-recent-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.project-links {
+  display: flex;
+  gap: 14px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.bookmark-button {
+  margin-top: 14px;
+}
+
+.pagination-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.pagination-controls span {
+  color: var(--muted);
+}
+
 @media (max-width: 1000px) {
   .nav-wrap {
     display: grid;
@@ -1415,6 +1739,10 @@ select:focus-visible {
   .project-grid.three-up {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .dashboard-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 600px) {
@@ -1456,6 +1784,37 @@ select:focus-visible {
 
   .footer-content nav {
     gap: 10px;
+  }
+
+  .dashboard-heading,
+  .dashboard-section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .dashboard-project {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .dashboard-project > img,
+  .dashboard-project-placeholder {
+    width: 100%;
+    height: 150px;
+  }
+
+  .admin-recent-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .admin-user-row {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-project-image {
+    width: 100%;
+    height: 170px;
   }
 }
 

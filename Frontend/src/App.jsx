@@ -12,6 +12,9 @@ import PublishPage from './pages/PublishPage.jsx';
 import RegisterPage from './pages/RegisterPage.jsx';
 import PrivacyPage from './pages/PrivacyPage.jsx';
 import TermsPage from './pages/TermsPage.jsx';
+import DashboardPage from './pages/DashboardPage.jsx';
+import AdminPage from './pages/AdminPage.jsx';
+import SavedProjectsPage from './pages/SavedProjectsPage.jsx';
 
 const pageMetadata = [
   { match: (path) => path === '/', title: 'ProjectSphere — Discover and share developer projects', description: 'Discover remarkable developer projects, share your work, explore technologies, and learn from community reviews.' },
@@ -21,6 +24,9 @@ const pageMetadata = [
   { match: (path) => path === '/register', title: 'Create an account — ProjectSphere', description: 'Create a ProjectSphere profile to publish projects and take part in the community.' },
   { match: (path) => path === '/publish', title: 'Share a Project — ProjectSphere', description: 'Publish your project and share its story with the ProjectSphere community.' },
   { match: (path) => path === '/profile', title: 'Your Profile — ProjectSphere', description: 'View your ProjectSphere creator profile and published work.' },
+  { match: (path) => path === '/dashboard', title: 'Project Dashboard — ProjectSphere', description: 'Manage your submitted projects and review their status on ProjectSphere.' },
+  { match: (path) => path === '/saved', title: 'Saved Projects — ProjectSphere', description: 'Revisit projects you have saved on ProjectSphere.' },
+  { match: (path) => path.startsWith('/admin'), title: 'Administration — ProjectSphere', description: 'Review project submissions and platform records.' },
   { match: (path) => path === '/privacy', title: 'Privacy Policy — ProjectSphere', description: 'Read how ProjectSphere handles account, project, contact, and session information.' },
   { match: (path) => path === '/terms', title: 'Terms & Conditions — ProjectSphere', description: 'Read the terms for using ProjectSphere.' },
 ];
@@ -96,6 +102,15 @@ function GuestRoute({ children }) {
   return user ? <Navigate to="/discover" replace /> : children;
 }
 
+function AdminRoute({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) {
+    return <div className="page-shell center-block"><div className="empty-state" role="status">Restoring your session…</div></div>;
+  }
+  if (!user) return <Navigate to="/login" replace state={{ from: '/admin' }} />;
+  return user.role === 'admin' ? children : <Navigate to="/dashboard" replace />;
+}
+
 function NotFoundPage() {
   return (
     <div className="page-shell center-block">
@@ -133,6 +148,30 @@ export default function App() {
               <ProtectedRoute>
                 <ProfilePage />
               </ProtectedRoute>
+            }
+          />
+          <Route
+            path="dashboard"
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="saved"
+            element={
+              <ProtectedRoute>
+                <SavedProjectsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="admin/*"
+            element={
+              <AdminRoute>
+                <AdminPage />
+              </AdminRoute>
             }
           />
           <Route path="privacy" element={<PrivacyPage />} />

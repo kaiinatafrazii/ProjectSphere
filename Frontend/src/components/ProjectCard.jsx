@@ -1,7 +1,35 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { optimizedImageUrl } from '../utils/imageUrl.js';
+import { useAuth } from '../context/AuthContext.jsx';
+import { apiRequest } from '../services/api.js';
 
-export default function ProjectCard({ project }) {
+export default function ProjectCard({ project, initialSaved = false, onSavedChange }) {
+  const { user } = useAuth();
+  const [saved, setSaved] = useState(initialSaved);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    setSaved(initialSaved);
+  }, [initialSaved]);
+
+  const toggleSaved = async () => {
+    setSaving(true);
+    setError('');
+    try {
+      const result = await apiRequest(`/projects/${encodeURIComponent(project.id)}/bookmark`, {
+        method: saved ? 'DELETE' : 'POST',
+      });
+      setSaved(result.saved);
+      onSavedChange?.(result.saved);
+    } catch (saveError) {
+      setError(saveError.message || 'Unable to update saved projects.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <article className="project-card">
       <div className="project-card-image-wrap">
@@ -37,6 +65,12 @@ export default function ProjectCard({ project }) {
             View project
           </Link>
         </div>
+        {user ? (
+          <button type="button" className="secondary-button bookmark-button" aria-pressed={saved} onClick={toggleSaved} disabled={saving}>
+            {saving ? 'Saving…' : saved ? 'Remove saved' : 'Save project'}
+          </button>
+        ) : null}
+        {error ? <p className="error-text" role="alert">{error}</p> : null}
       </div>
     </article>
   );

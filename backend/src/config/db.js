@@ -60,13 +60,11 @@ export const memoryStore = {
       repoUrl: null,
       liveUrl: null,
       screenshotUrl: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80',
-      likes: 228,
-      views: 3450,
+      likes: 0,
+      views: 0,
       status: 'featured',
       createdAt: new Date().toISOString(),
-      reviews: [
-        { id: 'review-1', userId: 'user-2', rating: 5, comment: 'Easy to trust and delightful to explore.' },
-      ],
+      reviews: [],
     },
     {
       id: 'project-2',
@@ -80,8 +78,8 @@ export const memoryStore = {
       repoUrl: null,
       liveUrl: null,
       screenshotUrl: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=1200&q=80',
-      likes: 142,
-      views: 2100,
+      likes: 0,
+      views: 0,
       status: 'published',
       createdAt: new Date().toISOString(),
       reviews: [],
@@ -98,8 +96,8 @@ export const memoryStore = {
       repoUrl: null,
       liveUrl: null,
       screenshotUrl: 'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1200&q=80',
-      likes: 96,
-      views: 1780,
+      likes: 0,
+      views: 0,
       status: 'published',
       createdAt: new Date().toISOString(),
       reviews: [],
@@ -165,9 +163,28 @@ function fallbackQuery(sql, params = []) {
   }
   if (normalized.startsWith('SELECT') && normalized.includes('FROM projects')) {
     if (normalized.includes('WHERE id = ?')) {
-      return memoryStore.projects.filter((project) => project.id === params[0]);
+      return memoryStore.projects.filter((project) =>
+        project.id === params[0] &&
+        (!normalized.includes("status IN ('published', 'featured')") || ['published', 'featured'].includes(project.status))
+      );
     }
-    return [...memoryStore.projects];
+    let projects = [...memoryStore.projects];
+    if (normalized.includes("status IN ('published', 'featured')")) {
+      projects = projects.filter((project) => ['published', 'featured'].includes(project.status));
+    }
+    if (normalized.includes('category = ?')) {
+      projects = projects.filter((project) => project.category === params[0]);
+    }
+    if (normalized.includes('title LIKE ?')) {
+      const searchIndex = normalized.includes('category = ?') ? 1 : 0;
+      const needle = String(params[searchIndex] || '').replaceAll('%', '').toLowerCase();
+      projects = projects.filter((project) =>
+        [project.title, project.tagline, project.summary, project.overview].some((value) =>
+          String(value || '').toLowerCase().includes(needle)
+        )
+      );
+    }
+    return projects;
   }
   if (normalized.startsWith('SELECT') && normalized.includes('FROM project_reviews')) {
     const projectId = params[0];
@@ -208,11 +225,18 @@ function fallbackQuery(sql, params = []) {
     return { insertId: project.id };
   }
   if (normalized.startsWith('INSERT INTO project_reviews')) {
-    const [, projectId, userId, rating, comment] = params;
-    const review = { id: globalThis.crypto.randomUUID(), userId, rating, comment };
+    const [id, projectId, userId, rating, comment] = params;
     const project = memoryStore.projects.find((entry) => entry.id === projectId);
-    if (project) project.reviews.push(review);
-    return { insertId: review.id };
+    if (project) {
+      const existing = project.reviews.find((review) => review.userId === userId);
+      if (existing) {
+        existing.rating = rating;
+        existing.comment = comment;
+        return { insertId: existing.id };
+      }
+      project.reviews.push({ id, userId, rating, comment });
+    }
+    return { insertId: id };
   }
   return [];
 }

@@ -63,6 +63,7 @@ export default function ProjectDetailsPage() {
 
   if (loading) return <div className="page-shell center-block"><div className="empty-state">Loading project details...</div></div>;
   if (!project) return <div className="page-shell center-block"><div className="empty-state" role="alert">{loadError || 'Project not found.'}<p><Link to="/discover">Return to projects</Link></p></div></div>;
+  const isOwner = user?.id && user.id === project.owner?.id;
 
   return (
     <div className="page-shell detail-page">
@@ -102,6 +103,10 @@ export default function ProjectDetailsPage() {
 
             <div className="card-panel">
               <h2>Reviews</h2>
+              <p className="muted-copy">
+                {project.reviewCount || 0} ratings
+                {project.ratingAverage !== null && project.ratingAverage !== undefined ? ` · ${project.ratingAverage} average` : ''}
+              </p>
               {project.reviews && project.reviews.length > 0 ? (
                 <div className="review-list">
                   {project.reviews.map((review) => (
@@ -111,6 +116,7 @@ export default function ProjectDetailsPage() {
                         <span>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span>
                       </div>
                       <p>{review.comment}</p>
+                      {review.createdAt ? <time dateTime={review.createdAt}>{new Date(review.createdAt).toLocaleDateString()}</time> : null}
                     </div>
                   ))}
                 </div>
@@ -141,12 +147,16 @@ export default function ProjectDetailsPage() {
                 </div>
                 <div>
                   <dt>Reviews</dt>
-                  <dd>{project.reviews?.length || 0}</dd>
+                  <dd>{project.reviewCount ?? project.reviews?.length ?? 0}</dd>
+                </div>
+                <div>
+                  <dt>Average rating</dt>
+                  <dd>{project.ratingAverage ?? '—'}</dd>
                 </div>
               </dl>
             </div>
 
-            <div className="card-panel">
+            {!isOwner ? <div className="card-panel">
               <h3>Leave feedback</h3>
               <form className="review-form" onSubmit={handleSubmitReview}>
                 <label>
@@ -173,7 +183,7 @@ export default function ProjectDetailsPage() {
                   <Link to="/login" state={{ from: `/projects/${id}` }} className="primary-button full-width">Log in to review</Link>
                 )}
               </form>
-            </div>
+            </div> : null}
           </aside>
         </div>
       </section>

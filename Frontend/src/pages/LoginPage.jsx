@@ -26,7 +26,7 @@ export default function LoginPage() {
         returnTo.startsWith('/') &&
         !returnTo.startsWith('//') &&
         !['/login', '/register'].includes(returnTo);
-      navigate(safeReturnTo ? returnTo : '/discover', { replace: true });
+      navigate(safeReturnTo ? returnTo : '/dashboard', { replace: true });
     } catch (submitError) {
       setError(submitError.message);
     }
