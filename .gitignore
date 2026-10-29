@@ -8,6 +8,9 @@ node_modules/
 Frontend/node_modules/
 Frontend/dist/
 Frontend/.vite/
+Frontend/.env
+Frontend/.env.*
+!Frontend/.env.example
 
 # Backend
 backend/node_modules/

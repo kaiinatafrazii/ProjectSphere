@@ -45,6 +45,7 @@ export const memoryStore = {
       createdAt: new Date().toISOString(),
     },
   ],
+  sessions: [],
   projects: [
     {
       id: 'project-1',
@@ -110,7 +111,11 @@ export async function query(sql, params = []) {
     const [rows] = await pool.execute(sql, params);
     return rows;
   } catch (error) {
-    console.warn('Falling back to in-memory store because MySQL is unavailable:', error.message);
+    if (!['ECONNREFUSED', 'ENOTFOUND', 'ETIMEDOUT', 'EHOSTUNREACH'].includes(error.code)) {
+      throw error;
+    }
+
+    console.warn('MySQL is unavailable; using the non-persistent demo store:', error.message);
     return fallbackQuery(sql, params);
   }
 }
@@ -119,30 +124,56 @@ function fallbackQuery(sql, params = []) {
   const normalized = sql.trim();
 
   if (normalized.startsWith('SELECT') && normalized.includes('FROM users')) {
+    if (normalized.includes('WHERE email = ?')) {
+      return memoryStore.users.filter((user) => user.email.toLowerCase() === String(params[0]).toLowerCase());
+    }
+    if (normalized.includes('WHERE id = ?')) {
+      return memoryStore.users.filter((user) => user.id === params[0]);
+    }
     return [...memoryStore.users];
   }
+  if (normalized.startsWith('SELECT') && normalized.includes('FROM auth_sessions')) {
+    const session = memoryStore.sessions.find((entry) => entry.id === params[0] && !entry.revokedAt);
+    return session ? [session] : [];
+  }
+  if (normalized.startsWith('INSERT INTO auth_sessions')) {
+    const [id, userId, expiresAt] = params;
+    memoryStore.sessions.push({ id, userId, expiresAt, revokedAt: null });
+    return { insertId: id };
+  }
+  if (normalized.startsWith('UPDATE auth_sessions')) {
+    const [id] = params.slice(-1);
+    const session = memoryStore.sessions.find((entry) => entry.id === id);
+    if (session) session.revokedAt = new Date().toISOString();
+    return { affectedRows: session ? 1 : 0 };
+  }
   if (normalized.startsWith('SELECT') && normalized.includes('FROM projects')) {
+    if (normalized.includes('WHERE id = ?')) {
+      return memoryStore.projects.filter((project) => project.id === params[0]);
+    }
     return [...memoryStore.projects];
   }
   if (normalized.startsWith('SELECT') && normalized.includes('FROM project_reviews')) {
     return [...memoryStore.projects.flatMap((project) => project.reviews.map((review) => ({ ...review, projectId: project.id })) )];
   }
   if (normalized.startsWith('INSERT INTO users')) {
-    const [, name, email, passwordHash, bio, avatarUrl, location, skills, role] = params;
+    const [id, name, email, passwordHash, bio, avatarUrl, location, skills, role] = params;
     const user = {
-      id: crypto.randomUUID(),
-      name, email, passwordHash, bio, avatarUrl, location, skills: Array.isArray(skills) ? skills : [], role,
+      id,
+      name, email: String(email).toLowerCase(), passwordHash, bio, avatarUrl, location,
+      skills: typeof skills === 'string' ? JSON.parse(skills) : Array.isArray(skills) ? skills : [],
+      role,
       savedProjects: [], createdAt: new Date().toISOString(),
     };
     memoryStore.users.push(user);
     return { insertId: user.id };
   }
   if (normalized.startsWith('INSERT INTO projects')) {
-    const [, userId, title, tagline, category, techStack, summary, overview, repoUrl, liveUrl, screenshotUrl, likes, views, status] = params;
+    const [id, userId, title, tagline, category, techStack, summary, overview, repoUrl, liveUrl, screenshotUrl, likes, views, status] = params;
     const project = {
-      id: crypto.randomUUID(),
+      id,
       userId, title, tagline, category,
-      techStack: Array.isArray(techStack) ? techStack : [],
+      techStack: typeof techStack === 'string' ? JSON.parse(techStack) : Array.isArray(techStack) ? techStack : [],
       summary, overview, repoUrl, liveUrl, screenshotUrl,
       likes: Number(likes || 0), views: Number(views || 0), status, createdAt: new Date().toISOString(), reviews: [],
     };
@@ -151,7 +182,7 @@ function fallbackQuery(sql, params = []) {
   }
   if (normalized.startsWith('INSERT INTO project_reviews')) {
     const [, projectId, userId, rating, comment] = params;
-    const review = { id: crypto.randomUUID(), userId, rating, comment };
+    const review = { id: globalThis.crypto.randomUUID(), userId, rating, comment };
     const project = memoryStore.projects.find((entry) => entry.id === projectId);
     if (project) project.reviews.push(review);
     return { insertId: review.id };
@@ -161,7 +192,8 @@ function fallbackQuery(sql, params = []) {
 
 export const isDatabaseAvailable = async () => {
   try {
-    await pool.getConnection();
+    const connection = await pool.getConnection();
+    connection.release();
     return true;
   } catch (error) {
     return false;
