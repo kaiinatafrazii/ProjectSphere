@@ -216,6 +216,14 @@ test('SQLite initializes persistently and supports the account, project, review,
     body: invalidArchive,
   });
   assert.equal(invalidArchiveResponse.status, 400);
+  const truncatedArchive = new FormData();
+  truncatedArchive.append('sourceCode', new Blob([Buffer.from([0x50, 0x4b, 0x03, 0x04])], { type: 'application/zip' }), 'truncated.zip');
+  const truncatedArchiveResponse = await request(`/projects/${projectId}/source-code`, {
+    method: 'POST',
+    cookie: owner.cookie,
+    body: truncatedArchive,
+  });
+  assert.equal(truncatedArchiveResponse.status, 400);
   assert.equal(db.prepare('SELECT COUNT(*) AS count FROM project_source_code WHERE project_id = ?').get(projectId).count, 0);
 
   const sourceArchive = new FormData();
@@ -229,6 +237,8 @@ test('SQLite initializes persistently and supports the account, project, review,
   assert.equal(uploadedArchive.status, 201);
   assert.equal(uploadedArchive.body.sourceCode.originalFilename, 'private-project.zip');
   assert.equal(Object.hasOwn(uploadedArchive.body.sourceCode, 'storageKey'), false);
+  const reviewerSourceMetadata = await request(`/projects/${projectId}/source-code`, { cookie: reviewer.cookie });
+  assert.equal(reviewerSourceMetadata.status, 404);
   const ownerSourceMetadata = await request(`/projects/${projectId}/source-code`, { cookie: owner.cookie });
   assert.equal(ownerSourceMetadata.status, 200);
   assert.equal(ownerSourceMetadata.body.sourceCode.originalFilename, 'private-project.zip');
@@ -329,6 +339,8 @@ test('SQLite initializes persistently and supports the account, project, review,
   const ownerProjects = await request('/projects/mine', { cookie: owner.cookie });
   assert.equal(ownerProjects.body.projects[0].status, 'rejected');
   assert.equal(ownerProjects.body.projects[0].moderationFeedback, 'Add setup and deployment instructions.');
+  assert.equal((await request(`/projects/${projectId}`)).status, 404);
+  assert.equal((await request(`/admin/projects/${projectId}/source-code/download`, { cookie: adminLogin.cookie })).status, 200);
 
   await request(`/admin/projects/${projectId}/moderate`, {
     method: 'POST',
@@ -340,12 +352,19 @@ test('SQLite initializes persistently and supports the account, project, review,
   const publicProject = await request(`/projects/${projectId}`);
   assert.equal(publicProject.status, 200);
   assert.equal(publicProject.body.project.owner.name, 'Updated Project Owner');
+  assert.equal(Array.isArray(publicProject.body.project.ownerProjects), true);
   assert.equal(Object.hasOwn(publicProject.body.project, 'sourceCode'), false);
   assert.equal(Object.hasOwn(publicProject.body.project, 'sourceFilename'), false);
   const sortedProjects = await request('/projects?sort=rating&page=1&limit=1');
   assert.equal(sortedProjects.body.projects.length, 1);
   assert.equal(sortedProjects.body.page, 1);
   assert.equal(typeof sortedProjects.body.total, 'number');
+  const publicCreator = await request(`/users/${owner.user.id}`);
+  assert.equal(publicCreator.status, 200);
+  assert.equal(publicCreator.body.user.name, 'Updated Project Owner');
+  assert.equal(Object.hasOwn(publicCreator.body.user, 'email'), false);
+  const publicCreatorProjects = await request(`/projects?ownerId=${encodeURIComponent(owner.user.id)}`);
+  assert.ok(publicCreatorProjects.body.projects.some((project) => project.id === projectId));
 
   const firstReview = await request(`/projects/${projectId}/reviews`, {
     method: 'POST',
