@@ -34,6 +34,9 @@ export async function updateOwnProfile(req, res) {
   const normalizedBio = typeof bio === 'string' ? bio.trim() : '';
   const normalizedLocation = typeof location === 'string' ? location.trim() : '';
   const normalizedAvatarUrl = typeof avatarUrl === 'string' ? avatarUrl.trim() : '';
+  if (avatarProvided && typeof avatarUrl !== 'string') {
+    return sendError(res, 400, 'Profile photo must be a URL or resized JPEG image.');
+  }
   if (!normalizedName || normalizedName.length > 100) {
     return sendError(res, 400, 'Name is required and must be 100 characters or fewer.');
   }
@@ -47,7 +50,9 @@ export async function updateOwnProfile(req, res) {
     if (!normalizedAvatarUrl) return true;
     try {
       const parsed = new URL(normalizedAvatarUrl);
-      return ['http:', 'https:'].includes(parsed.protocol);
+      return process.env.NODE_ENV === 'production'
+        ? parsed.protocol === 'https:'
+        : ['http:', 'https:'].includes(parsed.protocol);
     } catch {
       return false;
     }

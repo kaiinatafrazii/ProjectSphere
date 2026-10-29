@@ -112,6 +112,13 @@ test('SQLite initializes persistently and supports the account, project, review,
   assert.equal(db.prepare('SELECT avatar_url FROM users WHERE id = ?').get(owner.user.id).avatar_url, profilePhoto);
   const restoredProfile = await request('/auth/me', { cookie: owner.cookie });
   assert.equal(restoredProfile.body.user.avatarUrl, profilePhoto);
+  const profileUpdateWithoutPhoto = await request('/users/me', {
+    method: 'PUT',
+    cookie: owner.cookie,
+    body: { name: 'Updated Project Owner', bio: '', location: '', skills: [] },
+  });
+  assert.equal(profileUpdateWithoutPhoto.status, 200);
+  assert.equal(db.prepare('SELECT avatar_url FROM users WHERE id = ?').get(owner.user.id).avatar_url, profilePhoto);
   const invalidProfilePhoto = await request('/users/me', {
     method: 'PUT',
     cookie: owner.cookie,
@@ -124,6 +131,12 @@ test('SQLite initializes persistently and supports the account, project, review,
     },
   });
   assert.equal(invalidProfilePhoto.status, 400);
+  const invalidProfilePhotoType = await request('/users/me', {
+    method: 'PUT',
+    cookie: owner.cookie,
+    body: { name: 'Updated Project Owner', bio: '', location: '', skills: [], avatarUrl: 42 },
+  });
+  assert.equal(invalidProfilePhotoType.status, 400);
 
   const projectResponse = await request('/projects', {
     method: 'POST',
@@ -169,6 +182,7 @@ test('SQLite initializes persistently and supports the account, project, review,
   const adminProjects = await request('/admin/projects?status=pending', { cookie: adminLogin.cookie });
   assert.equal(adminProjects.status, 200);
   assert.ok(adminProjects.body.projects.some((project) => project.id === projectId));
+  assert.deepEqual(adminProjects.body.projects.find((project) => project.id === projectId).techStack, ['Node.js', 'SQLite']);
 
   const rejected = await request(`/admin/projects/${projectId}/moderate`, {
     method: 'POST',

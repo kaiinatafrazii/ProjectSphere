@@ -15,6 +15,17 @@ function pagination(query) {
   return { page, limit, offset: (page - 1) * limit };
 }
 
+function parseTechStack(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value !== 'string') return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function getAdminOverview(_req, res) {
   try {
     const [userCount] = await pool.execute('SELECT COUNT(*) AS totalUsers FROM users');
@@ -91,7 +102,12 @@ export async function listAdminProjects(req, res) {
        LIMIT ? OFFSET ?`,
       [...params, limit, offset]
     );
-    return sendSuccess(res, { projects, page, limit, total: Number(countRows[0].total) });
+    return sendSuccess(res, {
+      projects: projects.map((project) => ({ ...project, techStack: parseTechStack(project.techStack) })),
+      page,
+      limit,
+      total: Number(countRows[0].total),
+    });
   } catch (error) {
     console.error('Admin project listing failed:', error);
     return sendError(res, 500, 'Unable to load project submissions.');
