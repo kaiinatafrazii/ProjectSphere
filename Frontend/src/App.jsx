@@ -17,12 +17,16 @@ import DashboardPage from './pages/DashboardPage.jsx';
 import AdminPage from './pages/AdminPage.jsx';
 import SavedProjectsPage from './pages/SavedProjectsPage.jsx';
 import DashboardReviewsPage from './pages/DashboardReviewsPage.jsx';
+import AdminLoginPage from './pages/AdminLoginPage.jsx';
+import AdminContactMessagesPage from './pages/AdminContactMessagesPage.jsx';
+import AdminProfilePage from './pages/AdminProfilePage.jsx';
 
 const pageMetadata = [
   { match: (path) => path === '/', title: 'ProjectSphere — Discover and share developer projects', description: 'Discover remarkable developer projects, share your work, explore technologies, and learn from community reviews.' },
   { match: (path) => path === '/discover' || path === '/explore', title: 'Discover Projects — ProjectSphere', description: 'Search and explore projects shared by developers, students, and research teams.' },
   { match: (path) => path.startsWith('/projects/'), title: 'Project details — ProjectSphere', description: 'Explore a project, its technologies, and community feedback on ProjectSphere.' },
   { match: (path) => path === '/login', title: 'Log in — ProjectSphere', description: 'Log in to your ProjectSphere account.' },
+  { match: (path) => path === '/admin/login', title: 'Administrator login — ProjectSphere', description: 'Sign in to the ProjectSphere administration dashboard.' },
   { match: (path) => path === '/register', title: 'Create an account — ProjectSphere', description: 'Create a ProjectSphere profile to publish projects and take part in the community.' },
   { match: (path) => path.startsWith('/dashboard/projects/new') || path.startsWith('/dashboard/projects/') || path === '/publish', title: 'Share a Project — ProjectSphere', description: 'Publish your project and share its story with the ProjectSphere community.' },
   { match: (path) => path === '/dashboard/profile' || path === '/profile', title: 'Your Profile — ProjectSphere', description: 'View your ProjectSphere creator profile and published work.' },
@@ -111,7 +115,7 @@ function AdminRoute({ children }) {
     return <div className="page-shell center-block"><div className="empty-state" role="status">Restoring your session…</div></div>;
   }
   if (!user) {
-    return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}` }} />;
+    return <Navigate to="/admin/login" replace state={{ from: `${location.pathname}${location.search}` }} />;
   }
   return user.role === 'admin' ? children : <Navigate to="/dashboard" replace />;
 }
@@ -139,6 +143,7 @@ export default function App() {
     <>
       <PageMetadata />
       <Routes>
+        <Route path="admin/login" element={<AdminLoginPage />} />
         <Route element={<Layout />}>
           <Route index element={<HomePage />} />
           <Route path="discover" element={<DiscoverPage />} />
@@ -171,6 +176,8 @@ export default function App() {
           <Route path="users" element={<AdminPage />} />
           <Route path="reviews" element={<AdminPage />} />
           <Route path="moderation-history" element={<AdminPage />} />
+          <Route path="contact-messages" element={<AdminContactMessagesPage />} />
+          <Route path="profile" element={<AdminProfilePage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
         <Route path="publish" element={<ProtectedRoute><LegacyPublishRedirect /></ProtectedRoute>} />

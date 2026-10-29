@@ -23,18 +23,23 @@ db.pragma('foreign_keys = ON');
 db.pragma('busy_timeout = 5000');
 if (databasePath !== ':memory:') db.pragma('journal_mode = WAL');
 
-const migrationPath = path.join(backendDirectory, 'migrations', 'sqlite', '001_initial.sql');
-const schema = readFileSync(migrationPath, 'utf8');
-const currentVersion = db.pragma('user_version', { simple: true });
-if (currentVersion < 1) {
+const migrationsDirectory = path.join(backendDirectory, 'migrations', 'sqlite');
+const migrations = [
+  '001_initial.sql',
+  '002_contact_message_read.sql',
+];
+let currentVersion = db.pragma('user_version', { simple: true });
+for (let index = currentVersion; index < migrations.length; index += 1) {
+  const migration = migrations[index];
+  const sql = readFileSync(path.join(migrationsDirectory, migration), 'utf8');
   try {
     db.transaction(() => {
-      db.exec(schema);
-      db.pragma('user_version = 1');
+      db.exec(sql);
+      db.pragma(`user_version = ${index + 1}`);
     })();
   } catch (error) {
     db.close();
-    throw new Error(`Unable to initialize the SQLite database: ${error.message}`, { cause: error });
+    throw new Error(`Unable to apply SQLite migration ${migration}: ${error.message}`, { cause: error });
   }
 }
 
