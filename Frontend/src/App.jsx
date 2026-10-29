@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import Layout from './components/Layout.jsx';
 import { useAuth } from './context/AuthContext.jsx';
 import DiscoverPage from './pages/DiscoverPage.jsx';
@@ -10,13 +10,38 @@ import PublishPage from './pages/PublishPage.jsx';
 import RegisterPage from './pages/RegisterPage.jsx';
 
 function ProtectedRoute({ children }) {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) {
+    return <div className="page-shell center-block"><div className="empty-state" role="status">Restoring your session…</div></div>;
+  }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}` }} />;
   }
 
   return children;
+}
+
+function GuestRoute({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) {
+    return <div className="page-shell center-block"><div className="empty-state" role="status">Restoring your session…</div></div>;
+  }
+  return user ? <Navigate to="/discover" replace /> : children;
+}
+
+function NotFoundPage() {
+  return (
+    <div className="page-shell center-block">
+      <div className="empty-state">
+        <h1>Page not found</h1>
+        <p>This page may have moved or no longer exists.</p>
+        <a className="primary-button" href="/">Back to home</a>
+      </div>
+    </div>
+  );
 }
 
 export default function App() {
@@ -34,8 +59,8 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="login" element={<LoginPage />} />
-        <Route path="register" element={<RegisterPage />} />
+        <Route path="login" element={<GuestRoute><LoginPage /></GuestRoute>} />
+        <Route path="register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
         <Route
           path="profile"
           element={
@@ -44,6 +69,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
   );

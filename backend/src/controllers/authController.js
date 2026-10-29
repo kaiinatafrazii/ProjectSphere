@@ -1,3 +1,4 @@
+import jwt from 'jsonwebtoken';
 import { findUserByEmail, createUser } from '../repositories/userRepository.js';
 import {
   buildUserView,
@@ -128,7 +129,7 @@ export async function logout(req, res) {
         await revokeSession(decoded.sid);
       } catch (error) {
         if (error.name === 'TokenExpiredError') {
-          const decoded = (await import('jsonwebtoken')).default.decode(token);
+          const decoded = jwt.decode(token);
           await revokeSession(decoded?.sid);
         } else if (error.name !== 'JsonWebTokenError' && error.name !== 'NotBeforeError') {
           throw error;

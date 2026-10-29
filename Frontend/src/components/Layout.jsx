@@ -1,8 +1,26 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Layout() {
-  const { user, logout } = useAuth();
+  const { user, logout, loading } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [logoutError, setLogoutError] = useState('');
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    setLogoutError('');
+    setLoggingOut(true);
+    try {
+      await logout();
+      navigate('/', { replace: true });
+    } catch (error) {
+      setLogoutError(error.message || 'Unable to log out. Please try again.');
+    } finally {
+      setLoggingOut(false);
+    }
+  };
 
   return (
     <div className="app-shell">
@@ -16,15 +34,17 @@ export default function Layout() {
           <nav className="main-nav" aria-label="Main navigation">
             <NavLink to="/">Home</NavLink>
             <NavLink to="/discover">Discover</NavLink>
-            <NavLink to="/publish">Publish</NavLink>
+            {user ? <NavLink to="/publish">Publish</NavLink> : null}
             {user ? <NavLink to="/profile">Profile</NavLink> : null}
           </nav>
 
           <div className="nav-actions">
-            {user ? (
+            {loading ? <span className="user-greeting" role="status">Checking session…</span> : user ? (
               <>
                 <span className="user-greeting">Hi, {user.name.split(' ')[0]}</span>
-                <button className="secondary-button" onClick={logout}>Logout</button>
+                <button className="secondary-button" type="button" onClick={handleLogout} disabled={loggingOut}>
+                  {loggingOut ? 'Logging out…' : 'Logout'}
+                </button>
               </>
             ) : (
               <>
@@ -37,6 +57,11 @@ export default function Layout() {
       </header>
 
       <main>
+        {logoutError ? (
+          <div className="container" role="alert">
+            <p className="error-text">{logoutError}</p>
+          </div>
+        ) : null}
         <Outlet />
       </main>
     </div>

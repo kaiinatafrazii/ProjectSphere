@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import PasswordField from '../components/PasswordField.jsx';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
-  const { register } = useAuth();
+  const { register, authenticating } = useAuth();
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -12,18 +13,25 @@ export default function RegisterPage() {
     bio: '',
     location: '',
   });
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
 
   const handleChange = (event) => {
     const { name, value } = event.target;
     setForm((current) => ({ ...current, [name]: value }));
+    setError('');
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    if (form.password !== confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+
     try {
       await register(form);
-      navigate('/discover');
+      navigate('/discover', { replace: true });
     } catch (submitError) {
       setError(submitError.message);
     }
@@ -37,26 +45,41 @@ export default function RegisterPage() {
         <form onSubmit={handleSubmit} className="stacked-form compact-form">
           <label>
             Full name
-            <input name="name" value={form.name} onChange={handleChange} required />
+            <input name="name" value={form.name} onChange={handleChange} autoComplete="name" maxLength={100} required />
           </label>
           <label>
             Email
-            <input type="email" name="email" value={form.email} onChange={handleChange} required />
+            <input type="email" name="email" value={form.email} onChange={handleChange} autoComplete="email" required />
           </label>
-          <label>
-            Password
-            <input type="password" name="password" value={form.password} onChange={handleChange} required />
-          </label>
+          <PasswordField
+            value={form.password}
+            onChange={handleChange}
+            autoComplete="new-password"
+            minLength={8}
+          />
+          <p className="field-help">Use 8–72 characters. Your password is never shown or logged.</p>
+          <PasswordField
+            label="Confirm password"
+            name="confirmPassword"
+            value={confirmPassword}
+            onChange={(event) => {
+              setConfirmPassword(event.target.value);
+              setError('');
+            }}
+            autoComplete="new-password"
+          />
           <label>
             Bio
-            <textarea name="bio" value={form.bio} onChange={handleChange} rows={3} placeholder="Tell the community about your work and interests." />
+            <textarea name="bio" value={form.bio} onChange={handleChange} rows={3} maxLength={1000} placeholder="Tell the community about your work and interests." />
           </label>
           <label>
             Location
-            <input name="location" value={form.location} onChange={handleChange} placeholder="Your city or region" />
+            <input name="location" value={form.location} onChange={handleChange} maxLength={100} placeholder="Your city or region" />
           </label>
-          {error ? <p className="error-text">{error}</p> : null}
-          <button type="submit" className="primary-button full-width">Create account</button>
+          {error ? <p className="error-text" role="alert">{error}</p> : null}
+          <button type="submit" className="primary-button full-width" disabled={authenticating}>
+            {authenticating ? 'Creating account…' : 'Create account'}
+          </button>
         </form>
         <p className="auth-switch">
           Already a member? <Link to="/login">Sign in</Link>
