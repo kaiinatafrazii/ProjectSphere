@@ -380,10 +380,13 @@ export async function listAdminReviews(req, res) {
   }
 
   export async function markContactMessageRead(req, res) {
+    if (typeof req.body?.isRead !== 'boolean') {
+      return sendError(res, 400, 'isRead must be true or false.');
+    }
     try {
       const [result] = await pool.execute(
         'UPDATE contact_messages SET is_read = ? WHERE id = ?',
-        [req.body?.isRead === false ? 0 : 1, req.params.id]
+        [req.body.isRead ? 1 : 0, req.params.id]
       );
       if (!result.affectedRows) return sendError(res, 404, 'Contact message not found.');
       return sendSuccess(res, { message: 'Contact message updated.' });

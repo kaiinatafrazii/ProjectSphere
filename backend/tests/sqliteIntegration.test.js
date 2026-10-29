@@ -20,6 +20,8 @@ test('SQLite initializes persistently and supports the account, project, review,
     assert.ok(tables.includes(table), `${table} table exists`);
   }
   assert.equal(db.pragma('foreign_keys', { simple: true }), 1);
+  assert.equal(db.pragma('user_version', { simple: true }), 2);
+  assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_contact_messages_read_created'").get());
   assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_projects_status_created'").get());
 
   const temporaryDirectory = mkdtempSync(path.join(os.tmpdir(), 'projectsphere-sqlite-'));
@@ -195,6 +197,44 @@ test('SQLite initializes persistently and supports the account, project, review,
     body: { email: 'admin@example.test', password: 'secure-password-123' },
   });
   assert.equal(adminLogin.body.user.role, 'admin');
+  const adminOverview = await request('/admin/overview', { cookie: adminLogin.cookie });
+  assert.equal(adminOverview.status, 200);
+  assert.equal(adminOverview.body.stats.averageRating, null);
+  const adminUserList = await request('/admin/users?role=student&sort=oldest', { cookie: adminLogin.cookie });
+  assert.equal(adminUserList.status, 200);
+  assert.ok(adminUserList.body.users.some((user) => user.id === owner.user.id));
+  const userDetails = await request(`/admin/users/${owner.user.id}`, { cookie: adminLogin.cookie });
+  assert.equal(userDetails.status, 200);
+  assert.equal(userDetails.body.projects[0].id, projectId);
+
+  const contactSubmission = await request('/contact', {
+    method: 'POST',
+    body: {
+      name: 'Contact Sender',
+      email: 'contact@example.test',
+      subject: 'Help with my account',
+      message: 'Please help me update my account details.',
+    },
+  });
+  assert.equal(contactSubmission.status, 201);
+  const contactMessages = await request('/admin/contact-messages?unread=true', { cookie: adminLogin.cookie });
+  assert.equal(contactMessages.status, 200);
+  assert.equal(contactMessages.body.messages.length, 1);
+  assert.equal(contactMessages.body.messages[0].isRead, 0);
+  const contactMessageId = contactMessages.body.messages[0].id;
+  const markContactRead = await request(`/admin/contact-messages/${contactMessageId}`, {
+    method: 'PATCH',
+    cookie: adminLogin.cookie,
+    body: { isRead: true },
+  });
+  assert.equal(markContactRead.status, 200);
+  assert.equal(db.prepare('SELECT is_read FROM contact_messages WHERE id = ?').get(contactMessageId).is_read, 1);
+  const privateContactAccess = await request('/admin/contact-messages', { cookie: reviewer.cookie });
+  assert.equal(privateContactAccess.status, 403);
+
+  const adminProfile = await request('/admin/profile', { cookie: adminLogin.cookie });
+  assert.equal(adminProfile.status, 200);
+  assert.equal(adminProfile.body.user.email, 'admin@example.test');
   const adminProjects = await request('/admin/projects?status=pending', { cookie: adminLogin.cookie });
   assert.equal(adminProjects.status, 200);
   assert.ok(adminProjects.body.projects.some((project) => project.id === projectId));
@@ -259,6 +299,27 @@ test('SQLite initializes persistently and supports the account, project, review,
   const privateFeedback = await request('/admin/history', { cookie: reviewer.cookie });
   assert.equal(privateFeedback.status, 403);
 
+  const wrongAdminPassword = await request('/admin/password', {
+    method: 'PUT',
+    cookie: adminLogin.cookie,
+    body: { currentPassword: 'wrong-password', newPassword: 'a-new-secure-password-123' },
+  });
+  assert.equal(wrongAdminPassword.status, 401);
+  const changedAdminPassword = await request('/admin/password', {
+    method: 'PUT',
+    cookie: adminLogin.cookie,
+    body: { currentPassword: 'secure-password-123', newPassword: 'a-new-secure-password-123' },
+  });
+  assert.equal(changedAdminPassword.status, 200);
+  const revokedAdminSession = await request('/admin/profile', { cookie: admin.cookie });
+  assert.equal(revokedAdminSession.status, 401);
+  const updatedAdminLogin = await request('/auth/login', {
+    method: 'POST',
+    body: { email: 'admin@example.test', password: 'a-new-secure-password-123' },
+  });
+  assert.equal(updatedAdminLogin.status, 200);
+  assert.equal(updatedAdminLogin.body.user.role, 'admin');
+
   const failureResponse = await request('/projects/not-a-project/reviews', {
     method: 'POST',
     cookie: reviewer.cookie,
@@ -284,4 +345,45 @@ test('SQLite initializes persistently and supports the account, project, review,
   assert.equal(unavailableDatabaseResponse.body.message, 'We could not send your message right now. Please try again later.');
   assert.doesNotMatch(JSON.stringify(unavailableDatabaseResponse.body), /SQLITE|database|persistent\.sqlite/i);
   assert.equal(errorLogger.mock.callCount(), 1);
+});
+
+test('development admin setup creates an administrator with a password hash and refuses production', (context) => {
+  const temporaryDirectory = mkdtempSync(path.join(os.tmpdir(), 'projectsphere-admin-'));
+  const databasePath = path.join(temporaryDirectory, 'admin.sqlite');
+  context.after(() => rmSync(temporaryDirectory, { recursive: true, force: true }));
+  const childEnv = {
+    ...process.env,
+    SQLITE_DB_PATH: databasePath,
+    JWT_SECRET: 'projectsphere-admin-setup-test-secret',
+    ADMIN_EMAIL: 'admin123@gmail.com',
+    ADMIN_PASSWORD: 'kainat123',
+  };
+  const setup = spawnSync(process.execPath, ['scripts/setup-development-admin.js'], {
+    cwd: backendDirectory,
+    env: { ...childEnv, NODE_ENV: 'development' },
+    encoding: 'utf8',
+  });
+  assert.equal(setup.status, 0, setup.stderr);
+  assert.match(setup.stdout, /Created the development administrator account admin123@gmail\.com/);
+
+  const verify = spawnSync(process.execPath, ['--input-type=module', '-e', `
+    import { db } from './src/config/db.js';
+    import { verifyPassword } from './src/services/authService.js';
+    const user = db.prepare('SELECT role, password_hash FROM users WHERE email = ?').get('admin123@gmail.com');
+    if (!user || user.role !== 'admin' || user.password_hash === 'kainat123' || !(await verifyPassword('kainat123', user.password_hash))) process.exitCode = 1;
+    db.close();
+  `], {
+    cwd: backendDirectory,
+    env: { ...childEnv, NODE_ENV: 'development' },
+    encoding: 'utf8',
+  });
+  assert.equal(verify.status, 0, verify.stderr);
+
+  const productionSetup = spawnSync(process.execPath, ['scripts/setup-development-admin.js'], {
+    cwd: backendDirectory,
+    env: { ...childEnv, NODE_ENV: 'production' },
+    encoding: 'utf8',
+  });
+  assert.notEqual(productionSetup.status, 0);
+  assert.match(productionSetup.stderr, /disabled in production/i);
 });

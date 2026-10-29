@@ -176,16 +176,18 @@ The importer reads supported ProjectSphere tables and inserts them into SQLite i
 
 ### 6. Create an Administrator Account
 
-First, register a normal account through the application. Then promote the trusted account using a controlled database operation:
-
-Promote a trusted existing account using SQLite:
+The development-only command below creates or updates an administrator account. It hashes the password, uses a transaction, and revokes existing sessions when updating an account. It refuses to run when `NODE_ENV=production`.
 
 ```powershell
 Set-Location backend
-node --input-type=module -e "import { db } from './src/config/db.js'; const result = db.prepare('UPDATE users SET role = ? WHERE email = ?').run('admin', 'your-admin-email@example.com'); console.log('Updated accounts:', result.changes); db.close();"
+$env:ADMIN_EMAIL = 'admin123@gmail.com'
+$env:ADMIN_PASSWORD = 'kainat123'
+npm run setup:admin
+Remove-Item Env:ADMIN_EMAIL
+Remove-Item Env:ADMIN_PASSWORD
 ```
 
-Replace the example email with the actual registered email.
+These are local development credentials only. Change the password after first sign-in and never use this password in a deployed environment. You can provide different values through `ADMIN_EMAIL` and `ADMIN_PASSWORD`; neither value is stored in source code or the environment example.
 
 Do not expose an admin role selector on public registration or profile forms. Administrative privileges must be assigned through a trusted process.
 
@@ -254,9 +256,11 @@ Open the frontend URL in your browser.
 | `/admin/projects/approved` | Approved projects |
 | `/admin/projects/rejected` | Rejected projects |
 | `/admin/users` | User management |
+| `/admin/reviews` | Ratings and reviews |
+| `/admin/contact-messages` | Review contact form messages |
 | `/admin/moderation-history` | Moderation audit history |
-
-Routes should be verified against the actual React Router configuration before release.
+| `/admin/profile` | Administrator profile and password |
+| `/admin/login` | Dedicated administrator login |
 
 ## API Reference
 
@@ -303,7 +307,12 @@ The following endpoints are documented for the application.
 | GET | `/api/admin/reviews` | View and search persisted project reviews |
 | POST | `/api/admin/projects/:id/moderate` | Moderate a project |
 | GET | `/api/admin/users` | Retrieve users |
+| GET | `/api/admin/users/:id` | View a user's profile, projects, and reviews |
+| GET | `/api/admin/contact-messages` | List contact form submissions |
+| PATCH | `/api/admin/contact-messages/:id` | Mark a contact message read or unread |
 | GET | `/api/admin/history` | Retrieve moderation history |
+| GET | `/api/admin/profile` | Retrieve the signed-in administrator profile |
+| PUT | `/api/admin/password` | Change the admin password and revoke other sessions |
 | GET | `/api/users/:id` | Retrieve a user profile |
 
 Authentication, validation, ownership checks, and admin authorization are enforced server-side.
@@ -390,7 +399,7 @@ Set `VITE_SITE_URL` to the real public frontend origin when the frontend build r
 
 ## Known Limitations & Configuration
 
-- Notifications, account settings, a separate admin profile, and standalone admin review/feedback pages are not included in the documented route list unless implemented separately.
+- Notifications and account settings are not implemented. Admin profile, review, contact-message, and moderation-history routes are available.
 - MySQL configuration is needed only for the explicit migration importer.
 - The SQLite database file defaults to `backend/data/projectsphere.sqlite`; set `SQLITE_DB_PATH` for a deployment-specific path.
 - Profile photos support JPG, PNG, and WebP uploads; they are resized in the browser and saved as JPEG image data in the account's SQLite record.

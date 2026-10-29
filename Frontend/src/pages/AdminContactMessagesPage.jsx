@@ -38,8 +38,12 @@ export default function AdminContactMessagesPage() {
         method: 'PATCH',
         body: JSON.stringify({ isRead: !message.isRead }),
       });
-      setMessages((current) => current.map((item) => item.id === message.id ? { ...item, isRead: !message.isRead } : item));
-      setTotal((current) => Math.max(0, current - (unreadOnly && !message.isRead ? 1 : 0)));
+      if (unreadOnly) {
+        setMessages((current) => current.filter((item) => item.id !== message.id));
+        setTotal((current) => Math.max(0, current - 1));
+      } else {
+        setMessages((current) => current.map((item) => item.id === message.id ? { ...item, isRead: !message.isRead } : item));
+      }
     } catch (updateError) {
       setError(updateError.message || 'Unable to update the contact message.');
     } finally {

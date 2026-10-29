@@ -24,6 +24,13 @@ export default function AdminPage() {
   const [rows, setRows] = useState([]);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
+  const [userRole, setUserRole] = useState('');
+  const [createdAfter, setCreatedAfter] = useState('');
+  const [createdBefore, setCreatedBefore] = useState('');
+  const [userSort, setUserSort] = useState('newest');
+  const [selectedUser, setSelectedUser] = useState('');
+  const [userDetails, setUserDetails] = useState(null);
+  const [userDetailsLoading, setUserDetailsLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [feedback, setFeedback] = useState({});
@@ -44,8 +51,14 @@ export default function AdminPage() {
         if (view === 'projects') {
           if (routeStatus || status) params.set('status', routeStatus || status);
           if (search.trim()) params.set('search', search.trim());
-        } else if (['users', 'reviews'].includes(view) && search.trim()) {
-          params.set('search', search.trim());
+        } else if (['users', 'reviews'].includes(view)) {
+          if (search.trim()) params.set('search', search.trim());
+          if (view === 'users') {
+            if (userRole) params.set('role', userRole);
+            if (createdAfter) params.set('createdAfter', createdAfter);
+            if (createdBefore) params.set('createdBefore', createdBefore);
+            params.set('sort', userSort);
+          }
         }
         const endpoint = view === 'projects' ? 'projects' : view === 'users' ? 'users' : view === 'reviews' ? 'reviews' : 'history';
         const result = await apiRequest(`/admin/${endpoint}?${params}`);
@@ -96,6 +109,22 @@ export default function AdminPage() {
 
   const stats = overview?.stats || {};
 
+  const openUserDetails = async (id) => {
+    setSelectedUser(id);
+    setUserDetails(null);
+    setUserDetailsLoading(true);
+    setError('');
+    try {
+      const result = await apiRequest(`/admin/users/${encodeURIComponent(id)}`);
+      setUserDetails(result);
+    } catch (detailError) {
+      setError(detailError.message || 'Unable to load this user.');
+      setSelectedUser('');
+    } finally {
+      setUserDetailsLoading(false);
+    }
+  };
+
   return (
     <div className="page-shell dashboard-page">
       <div className="container">
@@ -112,8 +141,18 @@ export default function AdminPage() {
               <article><span>Published</span><strong>{stats.publishedProjects}</strong></article>
               <article><span>Rejected</span><strong>{stats.rejectedProjects}</strong></article>
               <article><span>Reviews</span><strong>{stats.totalReviews}</strong></article>
+              <article><span>Average rating</span><strong>{stats.averageRating ?? '—'}</strong></article>
+              <article><span>Unread contact</span><strong>{stats.unreadContactMessages}</strong></article>
             </section>
             <div className="admin-recent-grid">
+              <section className="dashboard-section">
+                <h2>Pending review queue</h2>
+                {!overview.pendingProjects?.length ? <div className="empty-state">No projects are waiting for review.</div> : (
+                  <ul className="activity-list">
+                    {overview.pendingProjects.map((project) => <li key={project.id}><div><strong>{project.title}</strong><span>{project.ownerName} · Submitted {new Date(project.createdAt).toLocaleDateString()}</span></div></li>)}
+                  </ul>
+                )}
+              </section>
               <section className="dashboard-section">
                 <h2>Recent submissions</h2>
                 {!overview.recentProjects?.length ? <div className="empty-state">No projects submitted yet.</div> : (
@@ -127,6 +166,22 @@ export default function AdminPage() {
                 {!overview.recentUsers?.length ? <div className="empty-state">No accounts found.</div> : (
                   <ul className="activity-list">
                     {overview.recentUsers.map((user) => <li key={user.id}><div><strong>{user.name}</strong><span>{user.email}</span></div></li>)}
+                  </ul>
+                )}
+              </section>
+              <section className="dashboard-section">
+                <h2>Recent reviews</h2>
+                {!overview.recentReviews?.length ? <div className="empty-state">No reviews have been submitted.</div> : (
+                  <ul className="activity-list">
+                    {overview.recentReviews.map((review) => <li key={review.id}><div><strong>{review.projectTitle} · {'★'.repeat(review.rating)}</strong><span>{review.reviewerName} · {new Date(review.createdAt).toLocaleDateString()}</span></div><p>{review.comment}</p></li>)}
+                  </ul>
+                )}
+              </section>
+              <section className="dashboard-section">
+                <h2>Recent moderation</h2>
+                {!overview.recentActivity?.length ? <div className="empty-state">No moderation activity yet.</div> : (
+                  <ul className="activity-list">
+                    {overview.recentActivity.map((entry) => <li key={entry.id}><div><strong>{entry.projectTitle}</strong><span>{entry.action.replaceAll('_', ' ')} by {entry.adminName}</span></div>{entry.feedback ? <p>{entry.feedback}</p> : null}</li>)}
                   </ul>
                 )}
               </section>
@@ -192,14 +247,40 @@ export default function AdminPage() {
               <h2>Users</h2>
               <form className="dashboard-filters" onSubmit={applyFilters}>
                 <label><span className="visually-hidden">Search users</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search users" /></label>
+                <label><span className="visually-hidden">Filter by role</span><select value={userRole} onChange={(event) => setUserRole(event.target.value)}><option value="">All roles</option>{['student', 'developer', 'researcher', 'team', 'admin'].map((role) => <option key={role} value={role}>{role}</option>)}</select></label>
+                <label><span className="visually-hidden">Created after</span><input aria-label="Created after" type="date" value={createdAfter} onChange={(event) => setCreatedAfter(event.target.value)} /></label>
+                <label><span className="visually-hidden">Created before</span><input aria-label="Created before" type="date" value={createdBefore} onChange={(event) => setCreatedBefore(event.target.value)} /></label>
+                <label><span className="visually-hidden">Sort users</span><select value={userSort} onChange={(event) => setUserSort(event.target.value)}><option value="newest">Newest first</option><option value="oldest">Oldest first</option></select></label>
                 <button className="secondary-button" type="submit">Search</button>
               </form>
             </div>
             {!rows.length ? <div className="empty-state">No users found.</div> : (
               <div className="admin-record-list">
-                {rows.map((user) => <article className="admin-record admin-user-row" key={user.id}><strong>{user.name}</strong><span>{user.email}</span><span>{user.role}</span><span>{user.projectCount} projects</span></article>)}
+                {rows.map((user) => (
+                  <article className="admin-record admin-user-row" key={user.id}>
+                    <div className="admin-record-main"><strong>{user.name}</strong><span>{user.email}</span><span>{user.role} · joined {new Date(user.createdAt).toLocaleDateString()}</span><span>{user.projectCount} projects ({user.pendingProjectCount} pending) · {user.reviewCount} reviews</span></div>
+                    <button className="secondary-button" type="button" onClick={() => openUserDetails(user.id)}>View details</button>
+                  </article>
+                ))}
               </div>
             )}
+            {selectedUser ? (
+              <section className="dashboard-section admin-user-detail" aria-live="polite">
+                <div className="dashboard-section-heading"><h3>User details</h3><button className="secondary-button" type="button" onClick={() => { setSelectedUser(''); setUserDetails(null); }}>Close</button></div>
+                {userDetailsLoading ? <p role="status">Loading user details…</p> : null}
+                {userDetails ? (
+                  <>
+                    <p><strong>{userDetails.user.name}</strong> · {userDetails.user.email} · {userDetails.user.role}{userDetails.user.location ? ` · ${userDetails.user.location}` : ''}</p>
+                    {userDetails.user.bio ? <p>{userDetails.user.bio}</p> : null}
+                    <div className="dashboard-stats"><article><span>Projects</span><strong>{userDetails.stats.totalProjects}</strong></article><article><span>Approved</span><strong>{userDetails.stats.approvedProjects}</strong></article><article><span>Pending</span><strong>{userDetails.stats.pendingProjects}</strong></article><article><span>Rejected</span><strong>{userDetails.stats.rejectedProjects}</strong></article><article><span>Reviews written</span><strong>{userDetails.stats.reviewsWritten}</strong></article></div>
+                    <h4>Projects</h4>
+                    {!userDetails.projects.length ? <p>No projects.</p> : <ul className="activity-list">{userDetails.projects.map((project) => <li key={project.id}><div><strong>{project.title}</strong><span>{project.status} · {new Date(project.createdAt).toLocaleDateString()}</span></div>{project.moderationFeedback ? <p>Latest admin feedback: {project.moderationFeedback}</p> : null}</li>)}</ul>}
+                    <h4>Reviews submitted</h4>
+                    {!userDetails.reviews.length ? <p>No reviews.</p> : <ul className="activity-list">{userDetails.reviews.map((review) => <li key={review.id}><div><strong>{review.projectTitle} · {'★'.repeat(review.rating)}</strong><span>{new Date(review.createdAt).toLocaleDateString()}</span></div><p>{review.comment}</p></li>)}</ul>}
+                  </>
+                ) : null}
+              </section>
+            ) : null}
             {total > 25 ? <div className="pagination-controls"><button className="secondary-button" disabled={page === 1} onClick={() => setPage((current) => current - 1)}>Previous</button><span>Page {page} of {Math.ceil(total / 25)}</span><button className="secondary-button" disabled={page >= Math.ceil(total / 25)} onClick={() => setPage((current) => current + 1)}>Next</button></div> : null}
           </section>
         ) : null}
