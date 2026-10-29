@@ -24,9 +24,9 @@ function getRatingSummary(reviews) {
 }
 
 export async function getProjects(filters = {}) {
-  const projects = await listProjects(filters);
-  return Promise.all(
-    projects.map(async (project) => {
+  const result = await listProjects(filters);
+  const projects = await Promise.all(
+    result.projects.map(async (project) => {
       const owner = await findUserById(project.user_id || project.userId);
       const reviews = Array.isArray(project.reviews) ? project.reviews : await listProjectReviews(project.id);
       return {
@@ -56,6 +56,7 @@ export async function getProjects(filters = {}) {
       };
     })
   );
+  return { projects, total: result.total, page: result.page, limit: result.limit };
 }
 
 export async function getProjectByIdService(id) {
@@ -63,6 +64,7 @@ export async function getProjectByIdService(id) {
   if (!project) return null;
   const owner = await findUserById(project.user_id || project.userId);
   const reviews = Array.isArray(project.reviews) ? project.reviews : await listProjectReviews(id);
+  const ownerProjects = await listProjects({ ownerId: owner?.id, excludeId: id, limit: 4 });
   return {
     id: project.id,
     title: project.title,
@@ -79,6 +81,13 @@ export async function getProjectByIdService(id) {
     status: project.status,
     createdAt: project.created_at || project.createdAt,
     owner: owner ? { id: owner.id, name: owner.name, avatarUrl: owner.avatar_url || owner.avatarUrl } : null,
+    ownerProjects: ownerProjects.projects.map((item) => ({
+      id: item.id,
+      title: item.title,
+      tagline: item.tagline,
+      category: item.category,
+      screenshotUrl: item.screenshot_url,
+    })),
     reviews: reviews.map((review) => ({
       id: review.id,
       rating: Number(review.rating),

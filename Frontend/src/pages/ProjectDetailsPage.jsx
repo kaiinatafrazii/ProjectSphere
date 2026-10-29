@@ -75,7 +75,7 @@ export default function ProjectDetailsPage() {
             <p className="project-tagline large">{project.tagline}</p>
             <div className="hero-actions compact">
               {project.liveUrl ? <a href={project.liveUrl} className="primary-button" target="_blank" rel="noreferrer">Live demo</a> : null}
-              {project.repoUrl ? <a href={project.repoUrl} className="secondary-button" target="_blank" rel="noreferrer">Source code</a> : null}
+              {project.repoUrl ? <a href={project.repoUrl} className="secondary-button" target="_blank" rel="noreferrer">Public repository</a> : null}
             </div>
           </div>
           <div className="project-hero-media">
@@ -131,7 +131,7 @@ export default function ProjectDetailsPage() {
               <div className="profile-mini">
                 <img src={optimizedImageUrl(project.owner?.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde', 120)} alt="" loading="lazy" decoding="async" />
                 <div>
-                  <strong>{project.owner?.name || 'Creator'}</strong>
+                  {project.owner ? <Link to={`/creators/${encodeURIComponent(project.owner.id)}`}><strong>{project.owner.name}</strong></Link> : <strong>Creator</strong>}
                   <p>{project.owner ? 'Project author' : 'Community creator'}</p>
                 </div>
               </div>
@@ -179,6 +179,25 @@ export default function ProjectDetailsPage() {
           </aside>
         </div>
       </section>
+      {project.ownerProjects?.length ? (
+        <section className="section-block">
+          <div className="container">
+            <div className="section-heading left-aligned">
+              <span className="eyebrow">More from this creator</span>
+              <h2>Other published projects</h2>
+            </div>
+            <div className="project-grid">
+              {project.ownerProjects.map((item) => (
+                <article className="project-card" key={item.id}>
+                  <div className="project-card-image-wrap">{item.screenshotUrl ? <img className="project-card-image" src={optimizedImageUrl(item.screenshotUrl, 720)} alt={`${item.title} project preview`} loading="lazy" /> : <div className="image-placeholder card-image-placeholder">Preview unavailable</div>}</div>
+                  <div className="project-card-content"><span className="pill">{item.category}</span><h3>{item.title}</h3><p className="project-tagline">{item.tagline}</p><Link className="link-button" to={`/projects/${encodeURIComponent(item.id)}`}>View project</Link></div>
+                </article>
+              ))}
+            </div>
+            {project.owner ? <Link className="secondary-button" to={`/creators/${encodeURIComponent(project.owner.id)}`}>View creator profile</Link> : null}
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

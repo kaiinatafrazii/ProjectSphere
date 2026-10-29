@@ -1,7 +1,10 @@
 import { query } from '../config/db.js';
 
 export async function listProjects(filters = {}) {
-  const { category, search } = filters;
+  const { category, search, ownerId } = filters;
+  const page = Math.max(1, Number.parseInt(filters.page, 10) || 1);
+  const limit = Math.min(50, Math.max(1, Number.parseInt(filters.limit, 10) || 12));
+  const offset = (page - 1) * limit;
   const clauses = ["status IN ('published', 'featured')"];
   const params = [];
   if (category && category !== 'all') {
@@ -13,7 +16,26 @@ export async function listProjects(filters = {}) {
     const term = `%${search}%`;
     params.push(term, term, term, term);
   }
-  return query(`SELECT * FROM projects WHERE ${clauses.join(' AND ')} ORDER BY created_at DESC`, params);
+  if (ownerId) {
+    clauses.push('user_id = ?');
+    params.push(ownerId);
+  }
+  if (filters.excludeId) {
+    clauses.push('id <> ?');
+    params.push(filters.excludeId);
+  }
+  const where = clauses.join(' AND ');
+  const sortOrder = {
+    newest: 'created_at DESC',
+    oldest: 'created_at ASC',
+    rating: '(SELECT AVG(rating) FROM project_reviews WHERE project_id = projects.id) DESC, created_at DESC',
+    title: 'title COLLATE NOCASE ASC',
+  }[filters.sort] || 'created_at DESC';
+  const [rows, countRows] = await Promise.all([
+    query(`SELECT * FROM projects WHERE ${where} ORDER BY ${sortOrder} LIMIT ? OFFSET ?`, [...params, limit, offset]),
+    query(`SELECT COUNT(*) AS total FROM projects WHERE ${where}`, params),
+  ]);
+  return { projects: rows, total: Number(countRows[0].total), page, limit };
 }
 
 export async function findProjectById(id) {

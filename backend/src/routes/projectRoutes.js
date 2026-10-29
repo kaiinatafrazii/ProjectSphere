@@ -4,6 +4,11 @@ import { addReviewHandler, getProjectByIdHandler, getProjectsHandler, publishPro
 import { requireAuth } from '../middleware/auth.js';
 import { deleteMyProject, getMyDashboard, getMyProjects, updateMyProject } from '../controllers/dashboardController.js';
 import { removeSavedProject, saveProject } from '../controllers/bookmarkController.js';
+import {
+  getOwnSourceCodeMetadata,
+  sourceCodeUploadMiddleware,
+  uploadProjectSourceCode,
+} from '../controllers/sourceCodeController.js';
 
 const router = express.Router();
 const projectSubmissionLimiter = rateLimit({
@@ -17,6 +22,8 @@ const projectSubmissionLimiter = rateLimit({
 router.get('/', getProjectsHandler);
 router.get('/mine', requireAuth, getMyProjects);
 router.get('/dashboard', requireAuth, getMyDashboard);
+router.get('/:id/source-code', requireAuth, getOwnSourceCodeMetadata);
+router.post('/:id/source-code', requireAuth, sourceCodeUploadMiddleware, uploadProjectSourceCode);
 router.put('/:id', requireAuth, projectSubmissionLimiter, updateMyProject);
 router.delete('/:id', requireAuth, deleteMyProject);
 router.post('/:id/bookmark', requireAuth, saveProject);

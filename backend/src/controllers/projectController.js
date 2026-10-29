@@ -4,11 +4,16 @@ import { validateProjectInput } from '../utils/projectValidation.js';
 
 export async function getProjectsHandler(req, res) {
   try {
-    const projects = await getProjects({
+    const result = await getProjects({
       category: req.query.category,
       search: req.query.search,
+      ownerId: req.query.ownerId,
+      excludeId: req.query.excludeId,
+      page: req.query.page,
+      limit: req.query.limit,
+      sort: req.query.sort,
     });
-    return sendSuccess(res, { projects });
+    return sendSuccess(res, result);
   } catch (error) {
     console.error('Project listing failed:', error);
     return sendError(res, 500, 'Unable to fetch projects right now.');

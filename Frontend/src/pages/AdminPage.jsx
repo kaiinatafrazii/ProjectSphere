@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { apiRequest } from '../services/api.js';
+import { apiRequest, downloadRequest } from '../services/api.js';
 
 export default function AdminPage() {
   const { pathname } = useLocation();
@@ -31,6 +31,10 @@ export default function AdminPage() {
   const [selectedUser, setSelectedUser] = useState('');
   const [userDetails, setUserDetails] = useState(null);
   const [userDetailsLoading, setUserDetailsLoading] = useState(false);
+  const [selectedProject, setSelectedProject] = useState('');
+  const [projectDetails, setProjectDetails] = useState(null);
+  const [projectDetailsLoading, setProjectDetailsLoading] = useState(false);
+  const [downloadingSource, setDownloadingSource] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [feedback, setFeedback] = useState({});
@@ -125,6 +129,39 @@ export default function AdminPage() {
     }
   };
 
+  const openProjectDetails = async (id) => {
+    if (selectedProject === id) {
+      setSelectedProject('');
+      setProjectDetails(null);
+      return;
+    }
+    setSelectedProject(id);
+    setProjectDetails(null);
+    setProjectDetailsLoading(true);
+    setError('');
+    try {
+      const result = await apiRequest(`/admin/projects/${encodeURIComponent(id)}`);
+      setProjectDetails(result.project);
+    } catch (detailError) {
+      setError(detailError.message || 'Unable to load project details.');
+      setSelectedProject('');
+    } finally {
+      setProjectDetailsLoading(false);
+    }
+  };
+
+  const downloadSource = async (project) => {
+    setDownloadingSource(true);
+    setError('');
+    try {
+      await downloadRequest(`/admin/projects/${encodeURIComponent(project.id)}/source-code/download`);
+    } catch (downloadError) {
+      setError(downloadError.message || 'Unable to download the private source archive.');
+    } finally {
+      setDownloadingSource(false);
+    }
+  };
+
   return (
     <div className="page-shell dashboard-page">
       <div className="container">
@@ -214,9 +251,46 @@ export default function AdminPage() {
                         {(Array.isArray(project.techStack) ? project.techStack : []).map((technology) => <span key={technology}>{technology}</span>)}
                       </div>
                       <div className="project-links">
-                        {project.repoUrl ? <a href={project.repoUrl} target="_blank" rel="noreferrer">Repository</a> : null}
+                        {project.repoUrl ? <a href={project.repoUrl} target="_blank" rel="noreferrer">Public repository</a> : null}
                         {project.liveUrl ? <a href={project.liveUrl} target="_blank" rel="noreferrer">Live project</a> : null}
                       </div>
+                      <div className="dashboard-project-actions">
+                        <button className="secondary-button" type="button" onClick={() => openProjectDetails(project.id)}>
+                          {selectedProject === project.id ? 'Hide admin details' : 'Admin details and source'}
+                        </button>
+                      </div>
+                      {selectedProject === project.id ? (
+                        <section className="admin-project-private-details">
+                          {projectDetailsLoading ? <p role="status">Loading project details…</p> : null}
+                          {projectDetails ? (
+                            <>
+                              <h4>Project and owner</h4>
+                              <p>{projectDetails.ownerName} · {projectDetails.ownerEmail}</p>
+                              <p>Submitted {new Date(projectDetails.createdAt).toLocaleString()} · Status: {projectDetails.status} · Rating: {projectDetails.ratingAverage ?? '—'} ({projectDetails.reviewCount} reviews)</p>
+                              <p><strong>Summary:</strong> {projectDetails.summary}</p>
+                              <p>{projectDetails.overview}</p>
+                              {projectDetails.screenshotUrl ? <img className="admin-project-image" src={projectDetails.screenshotUrl} alt={`${projectDetails.title} screenshot`} loading="lazy" /> : <p>No screenshot submitted.</p>}
+                              <div className="project-links">
+                                {projectDetails.repoUrl ? <a href={projectDetails.repoUrl} target="_blank" rel="noreferrer">Public repository</a> : <span>No public repository link</span>}
+                                {projectDetails.liveUrl ? <a href={projectDetails.liveUrl} target="_blank" rel="noreferrer">Public live demo</a> : <span>No public live-demo link</span>}
+                              </div>
+                              <h4>Private source-code archive</h4>
+                              {projectDetails.sourceCode ? (
+                                <div>
+                                  <p>{projectDetails.sourceCode.originalFilename} · {Math.ceil(projectDetails.sourceCode.sizeBytes / 1024)} KB · submitted {new Date(projectDetails.sourceCode.submittedAt).toLocaleString()}</p>
+                                  <button className="secondary-button" type="button" disabled={downloadingSource} onClick={() => downloadSource(project)}>
+                                    {downloadingSource ? 'Preparing download…' : 'Download private ZIP'}
+                                  </button>
+                                </div>
+                              ) : <p>Source code not submitted.</p>}
+                              <h4>Reviews and ratings</h4>
+                              {!projectDetails.reviews.length ? <p>No reviews submitted.</p> : <ul className="activity-list">{projectDetails.reviews.map((review) => <li key={review.id}><div><strong>{review.reviewerName} · {'★'.repeat(review.rating)}</strong><span>{review.reviewerEmail} · {new Date(review.createdAt).toLocaleDateString()}</span></div><p>{review.comment}</p></li>)}</ul>}
+                              <h4>Moderation history</h4>
+                              {!projectDetails.history.length ? <p>No moderation actions recorded.</p> : <ul className="activity-list">{projectDetails.history.map((entry, index) => <li key={`${entry.createdAt}-${index}`}><div><strong>{entry.action.replaceAll('_', ' ')}</strong><span>{entry.adminName} · {new Date(entry.createdAt).toLocaleString()}</span></div><p>{entry.previousStatus} → {entry.resultingStatus}{entry.feedback ? ` · ${entry.feedback}` : ''}</p></li>)}</ul>}
+                            </>
+                          ) : null}
+                        </section>
+                      ) : null}
                       {project.status !== 'removed' ? (
                         <label className="admin-feedback-field">Feedback for the owner (required when rejecting, requesting changes, or removing)
                           <textarea rows={3} maxLength={5000} value={feedback[project.id] || ''} onChange={(event) => setFeedback((current) => ({ ...current, [project.id]: event.target.value }))} />

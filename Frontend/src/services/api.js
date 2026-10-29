@@ -37,3 +37,26 @@ export async function apiRequest(path, options = {}) {
 
   return payload;
 }
+
+export async function downloadRequest(path, fallbackFilename = 'download.zip') {
+  const response = await fetch(`${API_BASE_URL}${path}`, { credentials: 'include' });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    if (response.status === 401) {
+      window.dispatchEvent(new CustomEvent('projectsphere:unauthorized'));
+    }
+    throw new Error(payload.message || 'Unable to download this file.');
+  }
+
+  const blob = await response.blob();
+  const disposition = response.headers.get('content-disposition') || '';
+  const filename = disposition.match(/filename="([^"]+)"/i)?.[1] || fallbackFilename;
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = objectUrl;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(objectUrl);
+}

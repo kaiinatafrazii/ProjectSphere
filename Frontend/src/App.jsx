@@ -20,6 +20,7 @@ import DashboardReviewsPage from './pages/DashboardReviewsPage.jsx';
 import AdminLoginPage from './pages/AdminLoginPage.jsx';
 import AdminContactMessagesPage from './pages/AdminContactMessagesPage.jsx';
 import AdminProfilePage from './pages/AdminProfilePage.jsx';
+import CreatorProfilePage from './pages/CreatorProfilePage.jsx';
 
 const pageMetadata = [
   { match: (path) => path === '/', title: 'ProjectSphere — Discover and share developer projects', description: 'Discover remarkable developer projects, share your work, explore technologies, and learn from community reviews.' },
@@ -151,6 +152,7 @@ export default function App() {
           <Route path="about" element={<Navigate to="/#about" replace />} />
           <Route path="contact" element={<Navigate to="/#contact" replace />} />
           <Route path="projects/:id" element={<ProjectDetailsPage />} />
+          <Route path="creators/:id" element={<CreatorProfilePage />} />
           <Route path="login" element={<GuestRoute><LoginPage /></GuestRoute>} />
           <Route path="register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
           <Route path="privacy" element={<PrivacyPage />} />

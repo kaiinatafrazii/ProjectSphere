@@ -125,8 +125,11 @@ export async function listAdminProjects(req, res) {
         p.summary, p.overview, p.repo_url AS repoUrl, p.live_url AS liveUrl,
         p.screenshot_url AS screenshotUrl, p.status, p.created_at AS createdAt,
         u.id AS ownerId, u.name AS ownerName, u.email AS ownerEmail,
-        COALESCE(r.reviewCount, 0) AS reviewCount, r.ratingAverage
+        COALESCE(r.reviewCount, 0) AS reviewCount, r.ratingAverage,
+        s.original_filename AS sourceFilename, s.size_bytes AS sourceSizeBytes,
+        s.sha256 AS sourceSha256, s.submitted_at AS sourceSubmittedAt
        FROM projects p JOIN users u ON u.id = p.user_id
+       LEFT JOIN project_source_code s ON s.project_id = p.id
        LEFT JOIN (
          SELECT project_id, COUNT(*) AS reviewCount, AVG(rating) AS ratingAverage
          FROM project_reviews GROUP BY project_id
@@ -148,6 +151,64 @@ export async function listAdminProjects(req, res) {
   } catch (error) {
     console.error('Admin project listing failed:', error);
     return sendError(res, 500, 'Unable to load project submissions.');
+  }
+}
+
+export async function getAdminProjectDetails(req, res) {
+  try {
+    const [projectRows] = await pool.execute(
+      `SELECT p.id, p.title, p.tagline, p.category, p.tech_stack AS techStack,
+        p.summary, p.overview, p.repo_url AS repoUrl, p.live_url AS liveUrl,
+        p.screenshot_url AS screenshotUrl, p.status, p.created_at AS createdAt,
+        p.updated_at AS updatedAt, u.id AS ownerId, u.name AS ownerName,
+        u.email AS ownerEmail, s.original_filename AS sourceFilename,
+        s.size_bytes AS sourceSizeBytes, s.sha256 AS sourceSha256,
+        s.submitted_at AS sourceSubmittedAt
+       FROM projects p
+       JOIN users u ON u.id = p.user_id
+       LEFT JOIN project_source_code s ON s.project_id = p.id
+       WHERE p.id = ?`,
+      [req.params.id]
+    );
+    if (!projectRows.length) return sendError(res, 404, 'Project not found.');
+
+    const [reviews] = await pool.execute(
+      `SELECT r.id, r.rating, r.comment, r.created_at AS createdAt,
+        u.name AS reviewerName, u.email AS reviewerEmail
+       FROM project_reviews r JOIN users u ON u.id = r.user_id
+       WHERE r.project_id = ? ORDER BY r.created_at DESC LIMIT 100`,
+      [req.params.id]
+    );
+    const [history] = await pool.execute(
+      `SELECT h.action, h.previous_status AS previousStatus,
+        h.resulting_status AS resultingStatus, h.feedback,
+        h.created_at AS createdAt, u.name AS adminName
+       FROM project_moderation_history h JOIN users u ON u.id = h.admin_id
+       WHERE h.project_id = ? ORDER BY h.created_at DESC LIMIT 100`,
+      [req.params.id]
+    );
+    const project = projectRows[0];
+    return sendSuccess(res, {
+      project: {
+        ...project,
+        techStack: parseTechStack(project.techStack),
+        reviewCount: reviews.length,
+        ratingAverage: reviews.length
+          ? Number((reviews.reduce((sum, review) => sum + Number(review.rating), 0) / reviews.length).toFixed(1))
+          : null,
+        sourceCode: project.sourceFilename ? {
+          originalFilename: project.sourceFilename,
+          sizeBytes: Number(project.sourceSizeBytes),
+          sha256: project.sourceSha256,
+          submittedAt: project.sourceSubmittedAt,
+        } : null,
+        reviews,
+        history,
+      },
+    });
+  } catch (error) {
+    console.error('Admin project detail retrieval failed:', error);
+    return sendError(res, 500, 'Unable to load project details.');
   }
 }
 

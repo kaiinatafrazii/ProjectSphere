@@ -13,6 +13,9 @@ export default function DiscoverPage() {
   const [savedProjectIds, setSavedProjectIds] = useState([]);
   const [search, setSearch] = useState(() => new URLSearchParams(location.search).get('search') || '');
   const [category, setCategory] = useState('all');
+  const [sort, setSort] = useState('newest');
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [bookmarkError, setBookmarkError] = useState('');
@@ -20,13 +23,18 @@ export default function DiscoverPage() {
   useEffect(() => {
     async function fetchProjects() {
       setLoading(true);
+      setError('');
       try {
         const params = new URLSearchParams();
         if (category && category !== 'all') params.set('category', category);
         if (search.trim()) params.set('search', search.trim());
+        params.set('sort', sort);
+        params.set('page', String(page));
+        params.set('limit', '12');
 
         const response = await apiRequest(`/projects?${params.toString()}`);
         setProjects(response.projects || []);
+        setTotal(response.total || 0);
         if (user) {
           try {
             const saved = await apiRequest('/users/me/bookmarks');
@@ -48,7 +56,11 @@ export default function DiscoverPage() {
     }
 
     fetchProjects();
-  }, [category, search, user]);
+  }, [category, search, sort, page, user]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [category, search, sort]);
 
   useEffect(() => {
     setSearch(new URLSearchParams(location.search).get('search') || '');
@@ -85,6 +97,15 @@ export default function DiscoverPage() {
                 </button>
               ))}
             </div>
+            <label className="project-sort-filter">
+              <span>Sort projects</span>
+              <select value={sort} onChange={(event) => setSort(event.target.value)}>
+                <option value="newest">Newest</option>
+                <option value="oldest">Oldest</option>
+                <option value="rating">Highest rated</option>
+                <option value="title">Title A–Z</option>
+              </select>
+            </label>
           </div>
 
           {location.state?.notice ? <p className="success-text" role="status">{location.state.notice}</p> : null}
@@ -109,6 +130,13 @@ export default function DiscoverPage() {
               ))}
             </div>
           )}
+          {!loading && !error && total > 12 ? (
+            <nav className="pagination-controls" aria-label="Project pages">
+              <button className="secondary-button" type="button" disabled={page === 1} onClick={() => setPage((current) => current - 1)}>Previous</button>
+              <span>Page {page} of {Math.ceil(total / 12)}</span>
+              <button className="secondary-button" type="button" disabled={page >= Math.ceil(total / 12)} onClick={() => setPage((current) => current + 1)}>Next</button>
+            </nav>
+          ) : null}
         </div>
       </section>
     </div>
