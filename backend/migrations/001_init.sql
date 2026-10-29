@@ -70,3 +70,13 @@ CREATE TABLE IF NOT EXISTS auth_sessions (
   INDEX idx_auth_sessions_user (user_id),
   INDEX idx_auth_sessions_expiration (expires_at)
 );
+
+CREATE TABLE IF NOT EXISTS contact_messages (
+  id CHAR(36) PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  subject VARCHAR(180) NOT NULL,
+  message TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_contact_messages_created (created_at)
+);

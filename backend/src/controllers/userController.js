@@ -14,7 +14,7 @@ export async function getUserProfile(req, res) {
         name: user.name,
         bio: user.bio || '',
         location: user.location || '',
-        skills: user.skills || [],
+        skills: typeof user.skills === 'string' ? JSON.parse(user.skills) : user.skills || [],
         role: user.role || 'student',
         avatarUrl: user.avatar_url || user.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=500&q=80',
         createdAt: user.created_at || user.createdAt,

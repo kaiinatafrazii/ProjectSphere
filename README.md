@@ -46,6 +46,11 @@ VITE_API_URL=http://localhost:5000/api
 
 The backend environment variables are documented in `backend/.env.example`.
 
+For production builds, configure the public frontend origin with `VITE_SITE_URL` (HTTPS). The frontend build generates
+an absolute `sitemap.xml`, adds its URL to `robots.txt`, and writes an absolute canonical and social preview URL when
+that deployment origin is provided. If no origin is configured, local builds skip sitemap generation rather than
+publishing an invented domain.
+
 ## 3. Initialize MySQL schema
 
 Use the migration script to create the base schema.
@@ -93,6 +98,7 @@ npm start
 ## 6. API routes
 
 - `GET /api/health`
+- `POST /api/contact` (rate-limited; requires the `contact_messages` table)
 - `POST /api/auth/register`
 - `POST /api/auth/login`
 - `GET /api/auth/me`
@@ -113,7 +119,12 @@ npm test
 ## Notes
 
 - The frontend and backend are intentionally separated under their respective directories.
+- Unsplash-hosted project images request cropped, quality-adjusted sizes; creator-provided image URLs are kept as supplied.
 - Authentication uses an HttpOnly session cookie; the JWT is not exposed to browser JavaScript or stored in `localStorage`.
 - Run the updated migration to add the `auth_sessions` table. MySQL sessions are revocable and expire after seven days.
+- Contact-form messages are stored in the `contact_messages` table; configure a production database before accepting real inquiries.
+- Contact rate limiting uses the default per-process store; deployments with multiple backend instances should configure a shared rate-limit store.
+- The in-memory demo data store is development-only. Production requests fail safely instead of reporting unpersisted writes during database outages.
+- No analytics provider or social account is configured, so none is included or reported as active.
 - The root directory contains only the required two application folders and the two root files listed in this project structure.
 - A local MySQL instance is expected for the database-backed flow.

@@ -19,8 +19,8 @@ export default function PasswordField({ label = 'Password', name = 'password', v
   };
 
   return (
-    <label className="password-label" htmlFor={id}>
-      {label}
+    <div className="password-field">
+      <label htmlFor={id}>{label}</label>
       <span className="password-control">
         <input
           ref={inputRef}
@@ -58,6 +58,6 @@ export default function PasswordField({ label = 'Password', name = 'password', v
           </svg>
         </button>
       </span>
-    </label>
+    </div>
   );
 }

@@ -46,6 +46,7 @@ export const memoryStore = {
     },
   ],
   sessions: [],
+  contactMessages: [],
   projects: [
     {
       id: 'project-1',
@@ -56,8 +57,8 @@ export const memoryStore = {
       techStack: ['React', 'Node.js', 'MySQL', 'Vite'],
       summary: 'A community-powered platform for discovering, publishing, and reviewing technical projects.',
       overview: 'ProjectSphere brings together project publishing, thoughtful reviews, and profile-driven discovery. It is designed for students, founders, and AI researchers looking to share technical work and get actionable feedback.',
-      repoUrl: 'https://github.com/example/projectsphere',
-      liveUrl: 'https://projectsphere.app',
+      repoUrl: null,
+      liveUrl: null,
       screenshotUrl: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80',
       likes: 228,
       views: 3450,
@@ -76,8 +77,8 @@ export const memoryStore = {
       techStack: ['Python', 'PyTorch', 'FastAPI'],
       summary: 'An explainable AI system for clinical risk scoring and patient recommendation workflows.',
       overview: 'SignalCare AI supports healthcare teams by surfacing evidence from multimodal records and ranking potential intervention pathways. The platform emphasizes interpretability and needs-driven design.',
-      repoUrl: 'https://github.com/example/signalcare',
-      liveUrl: 'https://signalcare.example.com',
+      repoUrl: null,
+      liveUrl: null,
       screenshotUrl: 'https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=1200&q=80',
       likes: 142,
       views: 2100,
@@ -94,8 +95,8 @@ export const memoryStore = {
       techStack: ['React', 'Express', 'PostgreSQL'],
       summary: 'A lightweight project health dashboard for teams shipping features and prototypes.',
       overview: 'PulseBoard gives engineering teams one source of truth for sprint health, issue backlog progress, and project narratives.',
-      repoUrl: 'https://github.com/example/pulseboard',
-      liveUrl: 'https://pulseboard.example.com',
+      repoUrl: null,
+      liveUrl: null,
       screenshotUrl: 'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1200&q=80',
       likes: 96,
       views: 1780,
@@ -111,6 +112,9 @@ export async function query(sql, params = []) {
     const [rows] = await pool.execute(sql, params);
     return rows;
   } catch (error) {
+    if (process.env.NODE_ENV === 'production') {
+      throw error;
+    }
     if (!['ECONNREFUSED', 'ENOTFOUND', 'ETIMEDOUT', 'EHOSTUNREACH'].includes(error.code)) {
       throw error;
     }
@@ -146,6 +150,18 @@ function fallbackQuery(sql, params = []) {
     const session = memoryStore.sessions.find((entry) => entry.id === id);
     if (session) session.revokedAt = new Date().toISOString();
     return { affectedRows: session ? 1 : 0 };
+  }
+  if (normalized.startsWith('INSERT INTO contact_messages')) {
+    const [id, name, email, subject, message] = params;
+    memoryStore.contactMessages.push({
+      id,
+      name,
+      email,
+      subject,
+      message,
+      createdAt: new Date().toISOString(),
+    });
+    return { insertId: id };
   }
   if (normalized.startsWith('SELECT') && normalized.includes('FROM projects')) {
     if (normalized.includes('WHERE id = ?')) {

@@ -1,10 +1,19 @@
 import { Link } from 'react-router-dom';
+import { optimizedImageUrl } from '../utils/imageUrl.js';
 
 export default function ProjectCard({ project }) {
   return (
     <article className="project-card">
       <div className="project-card-image-wrap">
-        <img src={project.screenshotUrl} alt={project.title} className="project-card-image" />
+        {project.screenshotUrl ? (
+          <img
+            src={optimizedImageUrl(project.screenshotUrl, 720)}
+            alt={`${project.title} project preview`}
+            className="project-card-image"
+            loading="lazy"
+            decoding="async"
+          />
+        ) : <div className="image-placeholder card-image-placeholder">Preview unavailable</div>}
       </div>
       <div className="project-card-content">
         <div className="card-meta-row">
@@ -21,7 +30,7 @@ export default function ProjectCard({ project }) {
         </div>
         <div className="card-footer">
           <div className="owner-line">
-            <img src={project.owner?.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=500&q=80'} alt={project.owner?.name || 'Project owner'} />
+            <img src={optimizedImageUrl(project.owner?.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde', 120)} alt="" loading="lazy" decoding="async" />
             <span>{project.owner?.name || 'Community project'}</span>
           </div>
           <Link to={`/projects/${project.id}`} className="link-button">

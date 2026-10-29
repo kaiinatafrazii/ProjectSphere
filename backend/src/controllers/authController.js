@@ -6,6 +6,7 @@ import {
   createSession,
   generateId,
   hashPassword,
+  isSessionActive,
   readSessionCookie,
   revokeSession,
   setSessionCookie,
@@ -74,6 +75,9 @@ export async function register(req, res) {
     return sendSuccess(res, { user: buildUserView(user) }, 201);
   } catch (error) {
     console.error('Registration failed:', error);
+    if (error.code === 'ER_DUP_ENTRY') {
+      return sendError(res, 409, 'An account with this email already exists.');
+    }
     return sendError(res, 500, 'Unable to create account right now.');
   }
 }
@@ -81,7 +85,7 @@ export async function register(req, res) {
 export async function login(req, res) {
   try {
     const { email, password } = req.body;
-    if (!email || !password) {
+    if (typeof email !== 'string' || typeof password !== 'string' || !email.trim() || !password) {
       return sendError(res, 400, 'Email and password are required.');
     }
 
@@ -106,12 +110,31 @@ export async function login(req, res) {
   }
 }
 
-export async function currentUser(req, res) {
+export async function restoreSession(req, res) {
+  const token = readSessionCookie(req);
+  if (!token) return sendSuccess(res, { user: null });
+
+  let decoded;
   try {
-    const user = await findUserById(req.user.id);
+    decoded = verifyToken(token);
+  } catch (error) {
+    if (error.name !== 'TokenExpiredError' && error.name !== 'JsonWebTokenError' && error.name !== 'NotBeforeError') {
+      console.error('Session token verification failed:', error);
+      return sendError(res, 500, 'Unable to restore session right now.');
+    }
+    clearSessionCookie(res);
+    return sendSuccess(res, { user: null });
+  }
+
+  try {
+    if (!(await isSessionActive(decoded.sid, decoded.id))) {
+      clearSessionCookie(res);
+      return sendSuccess(res, { user: null });
+    }
+    const user = await findUserById(decoded.id);
     if (!user) {
       clearSessionCookie(res);
-      return sendError(res, 401, 'Session user no longer exists.');
+      return sendSuccess(res, { user: null });
     }
     return sendSuccess(res, { user: buildUserView(user) });
   } catch (error) {

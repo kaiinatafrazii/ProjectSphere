@@ -1,16 +1,20 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
-import { query } from '../config/db.js';
+import { memoryStore, pool, query } from '../config/db.js';
 
 const SESSION_COOKIE = 'projectsphere_session';
 const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 
 function getJwtSecret() {
-  if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
-    throw new Error('JWT_SECRET must be configured in production.');
+  const secret = process.env.JWT_SECRET;
+  if (
+    process.env.NODE_ENV === 'production' &&
+    (!secret || secret.length < 32 || /^(change-me|replace|dev-secret)/i.test(secret))
+  ) {
+    throw new Error('Set a unique JWT_SECRET of at least 32 characters in production.');
   }
-  return process.env.JWT_SECRET || 'dev-secret';
+  return secret || 'dev-secret';
 }
 
 export async function hashPassword(password) {
@@ -62,10 +66,18 @@ export async function isSessionActive(sessionId, userId) {
 
 export async function revokeSession(sessionId) {
   if (!sessionId) return;
-  await query(
+  const demoSession = memoryStore.sessions.find((session) => session.id === sessionId);
+  if (demoSession) {
+    demoSession.revokedAt = new Date().toISOString();
+    return;
+  }
+  const [result] = await pool.execute(
     'UPDATE auth_sessions SET revoked_at = CURRENT_TIMESTAMP WHERE id = ? AND revoked_at IS NULL',
     [sessionId]
   );
+  if (result.affectedRows !== 1) {
+    throw new Error('The active session could not be revoked.');
+  }
 }
 
 export function setSessionCookie(res, token) {
@@ -90,7 +102,7 @@ export function clearSessionCookie(res) {
 export function readSessionCookie(req) {
   const cookieHeader = req.headers.cookie || '';
   const cookie = cookieHeader.split(';').map((item) => item.trim()).find((item) => item.startsWith(`${SESSION_COOKIE}=`));
-  return cookie ? decodeURIComponent(cookie.slice(SESSION_COOKIE.length + 1)) : null;
+  return cookie ? cookie.slice(SESSION_COOKIE.length + 1) : null;
 }
 
 export function verifyToken(token) {

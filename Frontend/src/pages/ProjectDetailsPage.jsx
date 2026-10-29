@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { apiRequest } from '../services/api.js';
+import { optimizedImageUrl } from '../utils/imageUrl.js';
 
 export default function ProjectDetailsPage() {
   const { id } = useParams();
@@ -77,7 +78,7 @@ export default function ProjectDetailsPage() {
             </div>
           </div>
           <div className="project-hero-media">
-            {project.screenshotUrl ? <img src={project.screenshotUrl} alt={`${project.title} project preview`} /> : <div className="image-placeholder">Project preview unavailable</div>}
+            {project.screenshotUrl ? <img src={optimizedImageUrl(project.screenshotUrl, 1200)} alt={`${project.title} project preview`} fetchpriority="high" decoding="async" /> : <div className="image-placeholder">Project preview unavailable</div>}
           </div>
         </div>
       </section>
@@ -122,7 +123,7 @@ export default function ProjectDetailsPage() {
           <aside className="project-sidebar">
             <div className="card-panel sticky-panel">
               <div className="profile-mini">
-                <img src={project.owner?.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=500&q=80'} alt={project.owner?.name || 'Project owner'} />
+                <img src={optimizedImageUrl(project.owner?.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde', 120)} alt="" loading="lazy" decoding="async" />
                 <div>
                   <strong>{project.owner?.name || 'Creator'}</strong>
                   <p>{project.owner ? 'Project author' : 'Community creator'}</p>

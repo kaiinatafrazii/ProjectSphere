@@ -94,7 +94,9 @@ function isHttpUrl(value) {
   if (typeof value !== 'string') return false;
   try {
     const url = new URL(value);
-    return url.protocol === 'http:' || url.protocol === 'https:';
+    return process.env.NODE_ENV === 'production'
+      ? url.protocol === 'https:'
+      : url.protocol === 'http:' || url.protocol === 'https:';
   } catch {
     return false;
   }
