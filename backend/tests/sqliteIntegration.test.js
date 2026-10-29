@@ -7,6 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import app from '../src/app.js';
 import { db } from '../src/config/db.js';
+import { pool } from '../src/config/db.js';
 
 const backendDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -200,7 +201,10 @@ test('SQLite initializes persistently and supports the account, project, review,
   assert.equal(failureResponse.status, 404);
   assert.doesNotMatch(JSON.stringify(failureResponse.body), /SQLITE|database|persistent\.sqlite/i);
 
-  db.close();
+  context.mock.method(pool, 'execute', async () => {
+    throw new Error('private database path /never-return-this.sqlite');
+  });
+  const errorLogger = context.mock.method(console, 'error', () => {});
   const unavailableDatabaseResponse = await request('/contact', {
     method: 'POST',
     body: {
@@ -213,4 +217,5 @@ test('SQLite initializes persistently and supports the account, project, review,
   assert.equal(unavailableDatabaseResponse.status, 500);
   assert.equal(unavailableDatabaseResponse.body.message, 'We could not send your message right now. Please try again later.');
   assert.doesNotMatch(JSON.stringify(unavailableDatabaseResponse.body), /SQLITE|database|persistent\.sqlite/i);
+  assert.equal(errorLogger.mock.callCount(), 1);
 });
