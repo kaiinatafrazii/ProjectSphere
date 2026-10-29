@@ -137,7 +137,15 @@ npm start
 
 Admin endpoints check the user's current database role for every request. Project moderation actions are transactionally recorded; rejecting, requesting changes, or removing a submission requires written feedback. Public discovery exposes only published/featured projects. A project owner cannot review their own project, and the database constraint plus upsert behavior limits each account to one editable review per project.
 
-## 7. Tests
+## 7. Frontend routes and dashboards
+
+- Public pages: `/`, `/discover` (also available at `/explore`), `/projects/:id`, `/about`, `/contact`, `/login`, and `/register`.
+- User workspace: `/dashboard`, `/dashboard/projects`, `/dashboard/projects/new`, `/dashboard/projects/:id/edit`, `/dashboard/bookmarks`, `/dashboard/reviews`, and `/dashboard/profile`.
+- Admin workspace: `/admin`, `/admin/projects`, `/admin/projects/pending`, `/admin/projects/approved`, `/admin/projects/rejected`, `/admin/users`, and `/admin/moderation-history`.
+
+User and admin pages share separate responsive sidebar layouts. Login uses the authenticated account returned by the backend to choose the default dashboard and returns users to protected pages when appropriate. The homepage remains public while authenticated. Admin API routes enforce the current database role server-side. Notifications, account settings, a separate admin profile, and standalone admin review/feedback pages are not implemented and are therefore not presented as navigation links.
+
+## 8. Tests
 
 ```bash
 cd backend

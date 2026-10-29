@@ -151,6 +151,7 @@ export default function AdminPage() {
                       <div className="dashboard-project-title"><h3>{project.title}</h3><span className={`status-badge status-${project.status}`}>{project.status.replaceAll('_', ' ')}</span></div>
                       <p>{project.tagline}</p>
                       <small>{project.ownerName} · {project.ownerEmail} · {project.category} · {project.reviewCount} reviews</small>
+                      {project.summary ? <p><strong>Summary:</strong> {project.summary}</p> : null}
                       <p>{project.overview}</p>
                       <div className="tech-stack">
                         {(Array.isArray(project.techStack) ? project.techStack : []).map((technology) => <span key={technology}>{technology}</span>)}

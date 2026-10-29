@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { pool } from '../src/config/db.js';
-import { moderateProject } from '../src/controllers/adminController.js';
+import { listAdminProjects, moderateProject } from '../src/controllers/adminController.js';
 import { requireAdmin } from '../src/middleware/auth.js';
 
 function createResponse() {
@@ -72,4 +72,19 @@ test('admin authorization checks the current database role', async (context) => 
   assert.equal(res.statusCode, 403);
   assert.equal(res.body.success, false);
   assert.equal(nextCalled, false);
+});
+
+test('approved project filter includes published and featured projects', async (context) => {
+  const statements = [];
+  context.mock.method(pool, 'execute', async (sql, params) => {
+    statements.push({ sql, params });
+    return sql.includes('COUNT(*)') ? [[{ total: 2 }], []] : [[], []];
+  });
+  const res = createResponse();
+  await listAdminProjects({ query: { status: 'approved', page: '1', limit: '25' } }, res);
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.total, 2);
+  assert.match(statements[0].sql, /p\.status IN \('published', 'featured'\)/);
+  assert.match(statements[1].sql, /p\.status IN \('published', 'featured'\)/);
 });
