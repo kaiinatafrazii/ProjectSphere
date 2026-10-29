@@ -47,14 +47,16 @@ export async function getAdminOverview(_req, res) {
 
 export async function listAdminProjects(req, res) {
   const { page, limit, offset } = pagination(req.query);
-  const allowedStatuses = new Set(['draft', 'pending', 'published', 'featured', 'rejected', 'changes_requested', 'removed']);
+  const allowedStatuses = new Set(['draft', 'pending', 'published', 'featured', 'rejected', 'changes_requested', 'removed', 'approved']);
   const status = typeof req.query.status === 'string' && allowedStatuses.has(req.query.status)
     ? req.query.status
     : '';
   const search = typeof req.query.search === 'string' ? req.query.search.trim().slice(0, 100) : '';
   const where = [];
   const params = [];
-  if (status) {
+  if (status === 'approved') {
+    where.push("p.status IN ('published', 'featured')");
+  } else if (status) {
     where.push('p.status = ?');
     params.push(status);
   }

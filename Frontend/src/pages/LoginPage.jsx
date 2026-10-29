@@ -19,14 +19,17 @@ export default function LoginPage() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     try {
-      await login(form);
+      const response = await login(form);
       const returnTo = location.state?.from;
+      const isAdmin = response.user?.role === 'admin';
       const safeReturnTo =
         typeof returnTo === 'string' &&
         returnTo.startsWith('/') &&
         !returnTo.startsWith('//') &&
-        !['/login', '/register'].includes(returnTo);
-      navigate(safeReturnTo ? returnTo : '/dashboard', { replace: true });
+        (returnTo === '/dashboard' || returnTo.startsWith('/dashboard/') ||
+          (isAdmin && (returnTo === '/admin' || returnTo.startsWith('/admin/'))));
+      const destination = isAdmin ? '/admin' : '/dashboard';
+      navigate(safeReturnTo ? returnTo : destination, { replace: true });
     } catch (submitError) {
       setError(submitError.message);
     }

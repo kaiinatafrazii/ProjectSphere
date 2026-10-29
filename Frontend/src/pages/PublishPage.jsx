@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { apiRequest } from '../services/api.js';
 
 export default function PublishPage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const editId = searchParams.get('edit');
+  const { id: editId } = useParams();
   const [form, setForm] = useState({
     title: '',
     tagline: '',
@@ -76,7 +75,7 @@ export default function PublishPage() {
         method: editId ? 'PUT' : 'POST',
         body: JSON.stringify(payload),
       });
-      navigate('/dashboard', { replace: true, state: { notice: 'Your project was submitted for review.' } });
+      navigate('/dashboard/projects', { replace: true, state: { notice: 'Your project was submitted for review.' } });
     } catch (error) {
       setError(error.message || 'Unable to publish your project.');
     } finally {

@@ -23,6 +23,7 @@ const statusLabels = {
 
 export default function DashboardPage() {
   const location = useLocation();
+  const projectsOnly = location.pathname === '/dashboard/projects';
   const [stats, setStats] = useState(emptyStats);
   const [projects, setProjects] = useState([]);
   const [activity, setActivity] = useState([]);
@@ -86,20 +87,11 @@ export default function DashboardPage() {
   return (
     <div className="page-shell dashboard-page">
       <div className="container">
-        <div className="dashboard-heading">
-          <div className="section-heading left-aligned">
-            <span className="eyebrow">Your workspace</span>
-            <h1>Project dashboard</h1>
-            <p>Manage your submissions and follow their progress.</p>
-          </div>
-          <Link className="primary-button" to="/publish">New project</Link>
-        </div>
-
         {location.state?.notice ? <p className="success-text" role="status">{location.state.notice}</p> : null}
         {error ? <p className="error-text" role="alert">{error}</p> : null}
         {loading ? <div className="empty-state" role="status">Loading your project dashboard…</div> : (
           <>
-            <section className="dashboard-stats" aria-label="Project statistics">
+            {!projectsOnly ? <section className="dashboard-stats" aria-label="Project statistics">
               <article><span>Total projects</span><strong>{stats.totalProjects}</strong></article>
               <article><span>Published</span><strong>{stats.publishedProjects}</strong></article>
               <article><span>Pending review</span><strong>{stats.pendingProjects}</strong></article>
@@ -107,11 +99,12 @@ export default function DashboardPage() {
               <article><span>Reviews received</span><strong>{stats.totalReviews}</strong></article>
               <article><span>Average rating</span><strong>{stats.averageRating ?? '—'}</strong></article>
               <article><span>Saved projects</span><strong>{stats.savedProjects}</strong></article>
-            </section>
+            </section> : null}
 
             <section className="dashboard-section" aria-labelledby="my-projects-heading">
               <div className="dashboard-section-heading">
                 <h2 id="my-projects-heading">My projects</h2>
+                <Link className="primary-button" to="/dashboard/projects/new">New project</Link>
                 <div className="dashboard-filters">
                   <label>
                     <span className="visually-hidden">Search your projects</span>
@@ -145,7 +138,7 @@ export default function DashboardPage() {
                 <div className="empty-state">
                   <strong>{projects.length ? 'No projects match these filters.' : 'You have not shared a project yet.'}</strong>
                   {!projects.length ? <p>Publish your first project to start receiving community feedback.</p> : null}
-                  {!projects.length ? <Link className="primary-button" to="/publish">Share a project</Link> : null}
+                  {!projects.length ? <Link className="primary-button" to="/dashboard/projects/new">Share a project</Link> : null}
                 </div>
               ) : (
                 <div className="dashboard-project-list">
@@ -165,7 +158,7 @@ export default function DashboardPage() {
                       </div>
                       <div className="dashboard-project-actions">
                         {['published', 'featured'].includes(project.status) ? <Link className="secondary-button" to={`/projects/${encodeURIComponent(project.id)}`}>Preview</Link> : null}
-                        {project.status !== 'removed' ? <Link className="secondary-button" to={`/publish?edit=${encodeURIComponent(project.id)}`}>Edit</Link> : null}
+                        {project.status !== 'removed' ? <Link className="secondary-button" to={`/dashboard/projects/${encodeURIComponent(project.id)}/edit`}>Edit</Link> : null}
                         <button className="secondary-button" type="button" onClick={() => removeProject(project)} disabled={deletingId === project.id}>
                           {deletingId === project.id ? 'Removing…' : 'Remove'}
                         </button>
@@ -176,7 +169,7 @@ export default function DashboardPage() {
               )}
             </section>
 
-            <section className="dashboard-section" aria-labelledby="recent-reviews-heading">
+            {!projectsOnly ? <section className="dashboard-section" aria-labelledby="recent-reviews-heading">
               <h2 id="recent-reviews-heading">Recent reviews</h2>
               {!recentReviews.length ? <div className="empty-state">No community reviews yet.</div> : (
                 <ul className="activity-list">
@@ -189,9 +182,9 @@ export default function DashboardPage() {
                   ))}
                 </ul>
               )}
-            </section>
+            </section> : null}
 
-            <section className="dashboard-section" aria-labelledby="recent-activity-heading">
+            {!projectsOnly ? <section className="dashboard-section" aria-labelledby="recent-activity-heading">
               <h2 id="recent-activity-heading">Recent moderation feedback</h2>
               {!activity.length ? <div className="empty-state">No moderation activity yet.</div> : (
                 <ul className="activity-list">
@@ -204,7 +197,7 @@ export default function DashboardPage() {
                   ))}
                 </ul>
               )}
-            </section>
+            </section> : null}
           </>
         )}
       </div>

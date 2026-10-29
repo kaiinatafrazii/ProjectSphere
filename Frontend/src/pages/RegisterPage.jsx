@@ -30,8 +30,8 @@ export default function RegisterPage() {
     }
 
     try {
-      await register(form);
-      navigate('/dashboard', { replace: true });
+      const response = await register(form);
+      navigate(response.user?.role === 'admin' ? '/admin' : '/dashboard', { replace: true });
     } catch (submitError) {
       setError(submitError.message);
     }

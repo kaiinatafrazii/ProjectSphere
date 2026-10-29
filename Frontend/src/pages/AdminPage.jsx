@@ -1,21 +1,27 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { apiRequest } from '../services/api.js';
 
-const views = [
-  ['overview', 'Overview'],
-  ['projects', 'Project moderation'],
-  ['users', 'Users'],
-  ['history', 'Moderation history'],
-];
-
 export default function AdminPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const view = views.some(([id]) => id === searchParams.get('view')) ? searchParams.get('view') : 'overview';
+  const { pathname } = useLocation();
+  const view = pathname === '/admin'
+    ? 'overview'
+    : pathname === '/admin/users'
+      ? 'users'
+      : pathname === '/admin/moderation-history'
+        ? 'history'
+        : 'projects';
+  const routeStatus = pathname.endsWith('/pending')
+    ? 'pending'
+    : pathname.endsWith('/approved')
+      ? 'approved'
+      : pathname.endsWith('/rejected')
+        ? 'rejected'
+        : '';
   const [overview, setOverview] = useState(null);
   const [rows, setRows] = useState([]);
   const [search, setSearch] = useState('');
-  const [status, setStatus] = useState('pending');
+  const [status, setStatus] = useState('');
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [feedback, setFeedback] = useState({});
@@ -34,7 +40,7 @@ export default function AdminPage() {
       } else {
         const params = new URLSearchParams({ page: String(page), limit: '25' });
         if (view === 'projects') {
-          if (status) params.set('status', status);
+          if (routeStatus || status) params.set('status', routeStatus || status);
           if (search.trim()) params.set('search', search.trim());
         } else if (view === 'users' && search.trim()) {
           params.set('search', search.trim());
@@ -53,7 +59,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     loadView();
-  }, [view, page]);
+  }, [view, page, pathname]);
 
   const applyFilters = (event) => {
     event.preventDefault();
@@ -91,20 +97,6 @@ export default function AdminPage() {
   return (
     <div className="page-shell dashboard-page">
       <div className="container">
-        <div className="section-heading left-aligned">
-          <span className="eyebrow">Administration</span>
-          <h1>ProjectSphere admin</h1>
-          <p>Review submissions and see platform activity from persisted records.</p>
-        </div>
-
-        <nav className="dashboard-tabs" aria-label="Administrator sections">
-          {views.map(([id, label]) => (
-            <button type="button" className={view === id ? 'active' : ''} key={id} onClick={() => setSearchParams(id === 'overview' ? {} : { view: id })}>
-              {label}
-            </button>
-          ))}
-        </nav>
-
         {error ? <p className="error-text" role="alert">{error}</p> : null}
         {notice ? <p className="success-text" role="status">{notice}</p> : null}
         {loading ? <div className="empty-state" role="status">Loading administrator data…</div> : null}
@@ -146,7 +138,7 @@ export default function AdminPage() {
               <h2>Project moderation</h2>
               <form className="dashboard-filters" onSubmit={applyFilters}>
                 <label><span className="visually-hidden">Search by project or owner</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Project or owner" /></label>
-                <label><span className="visually-hidden">Filter by project status</span><select value={status} onChange={(event) => setStatus(event.target.value)}><option value="">All statuses</option>{['pending', 'changes_requested', 'rejected', 'published', 'featured', 'draft', 'removed'].map((item) => <option key={item}>{item}</option>)}</select></label>
+                {!routeStatus ? <label><span className="visually-hidden">Filter by project status</span><select value={status} onChange={(event) => setStatus(event.target.value)}><option value="">All statuses</option>{['pending', 'changes_requested', 'rejected', 'published', 'featured', 'draft', 'removed'].map((item) => <option key={item}>{item}</option>)}</select></label> : null}
                 <button className="secondary-button" type="submit">Search</button>
               </form>
             </div>

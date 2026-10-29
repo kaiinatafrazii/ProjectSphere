@@ -135,6 +135,7 @@ export default function Layout() {
             </button>
 
             <nav id="primary-navigation" className={menuOpen ? 'main-nav is-open' : 'main-nav'} aria-label="Main navigation">
+              <NavLink to="/discover" className={({ isActive }) => isActive ? 'active' : undefined}>Explore</NavLink>
               {landingSections.map(([id, label]) => (
                 <a
                   key={id}
@@ -188,6 +189,7 @@ export default function Layout() {
             </NavLink>
             <p>Discover, publish, and improve technical work together.</p>
             <nav aria-label="Footer navigation">
+              <Link to="/discover">Explore projects</Link>
               {landingSections.map(([id, label]) => (
                 <a key={id} href={`/#${id}`} onClick={(event) => navigateToSection(event, id)}>{label}</a>
               ))}
