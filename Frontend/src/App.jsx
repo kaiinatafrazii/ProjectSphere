@@ -169,6 +169,7 @@ export default function App() {
           <Route path="projects/approved" element={<AdminPage />} />
           <Route path="projects/rejected" element={<AdminPage />} />
           <Route path="users" element={<AdminPage />} />
+          <Route path="reviews" element={<AdminPage />} />
           <Route path="moderation-history" element={<AdminPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>

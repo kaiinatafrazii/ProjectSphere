@@ -214,6 +214,11 @@ test('SQLite initializes persistently and supports the account, project, review,
   assert.equal(bookmark.status, 200);
   const bookmarks = await request('/users/me/bookmarks', { cookie: reviewer.cookie });
   assert.equal(bookmarks.body.projects.length, 1);
+  const adminReviews = await request('/admin/reviews', { cookie: adminLogin.cookie });
+  assert.equal(adminReviews.status, 200);
+  assert.equal(adminReviews.body.reviews.length, 1);
+  assert.equal(adminReviews.body.reviews[0].reviewerEmail, 'reviewer@example.test');
+  assert.equal(adminReviews.body.reviews[0].rating, 3);
 
   const dashboard = await request('/projects/dashboard', { cookie: owner.cookie });
   assert.equal(dashboard.body.stats.totalReviews, 1);

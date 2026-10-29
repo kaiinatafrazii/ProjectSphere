@@ -185,3 +185,36 @@ export async function listAdminUsers(req, res) {
     return sendError(res, 500, 'Unable to load users.');
   }
 }
+
+export async function listAdminReviews(req, res) {
+  const { page, limit, offset } = pagination(req.query);
+  const search = typeof req.query.search === 'string' ? req.query.search.trim().slice(0, 100) : '';
+  const where = search ? 'WHERE p.title LIKE ? OR u.name LIKE ? OR r.comment LIKE ?' : '';
+  const term = `%${search}%`;
+  const params = search ? [term, term, term] : [];
+  try {
+    const [countRows] = await pool.execute(
+      `SELECT COUNT(*) AS total
+       FROM project_reviews r
+       JOIN projects p ON p.id = r.project_id
+       JOIN users u ON u.id = r.user_id
+       ${where}`,
+      params
+    );
+    const [reviews] = await pool.execute(
+      `SELECT r.id, r.project_id AS projectId, p.title AS projectTitle,
+        r.user_id AS reviewerId, u.name AS reviewerName, u.email AS reviewerEmail,
+        r.rating, r.comment, r.created_at AS createdAt
+       FROM project_reviews r
+       JOIN projects p ON p.id = r.project_id
+       JOIN users u ON u.id = r.user_id
+       ${where}
+       ORDER BY r.created_at DESC LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
+    );
+    return sendSuccess(res, { reviews, page, limit, total: Number(countRows[0].total) });
+  } catch (error) {
+    console.error('Admin review listing failed:', error);
+    return sendError(res, 500, 'Unable to load project reviews.');
+  }
+}

@@ -8,6 +8,8 @@ export default function AdminPage() {
     ? 'overview'
     : pathname === '/admin/users'
       ? 'users'
+      : pathname === '/admin/reviews'
+        ? 'reviews'
       : pathname === '/admin/moderation-history'
         ? 'history'
         : 'projects';
@@ -42,12 +44,12 @@ export default function AdminPage() {
         if (view === 'projects') {
           if (routeStatus || status) params.set('status', routeStatus || status);
           if (search.trim()) params.set('search', search.trim());
-        } else if (view === 'users' && search.trim()) {
+        } else if (['users', 'reviews'].includes(view) && search.trim()) {
           params.set('search', search.trim());
         }
-        const endpoint = view === 'projects' ? 'projects' : view === 'users' ? 'users' : 'history';
+        const endpoint = view === 'projects' ? 'projects' : view === 'users' ? 'users' : view === 'reviews' ? 'reviews' : 'history';
         const result = await apiRequest(`/admin/${endpoint}?${params}`);
-        setRows(result.projects || result.users || result.history || []);
+        setRows(result.projects || result.users || result.reviews || result.history || []);
         setTotal(result.total || 0);
       }
     } catch (loadError) {
@@ -197,6 +199,30 @@ export default function AdminPage() {
               <div className="admin-record-list">
                 {rows.map((user) => <article className="admin-record admin-user-row" key={user.id}><strong>{user.name}</strong><span>{user.email}</span><span>{user.role}</span><span>{user.projectCount} projects</span></article>)}
               </div>
+            )}
+            {total > 25 ? <div className="pagination-controls"><button className="secondary-button" disabled={page === 1} onClick={() => setPage((current) => current - 1)}>Previous</button><span>Page {page} of {Math.ceil(total / 25)}</span><button className="secondary-button" disabled={page >= Math.ceil(total / 25)} onClick={() => setPage((current) => current + 1)}>Next</button></div> : null}
+          </section>
+        ) : null}
+
+        {!loading && view === 'reviews' ? (
+          <section className="dashboard-section">
+            <div className="dashboard-section-heading">
+              <h2>Ratings &amp; reviews</h2>
+              <form className="dashboard-filters" onSubmit={applyFilters}>
+                <label><span className="visually-hidden">Search reviews</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Project, reviewer, or review" /></label>
+                <button className="secondary-button" type="submit">Search</button>
+              </form>
+            </div>
+            {!rows.length ? <div className="empty-state">No reviews found.</div> : (
+              <ul className="activity-list">
+                {rows.map((review) => (
+                  <li key={review.id}>
+                    <div><strong>{review.projectTitle}</strong><span>{review.reviewerName} · {review.reviewerEmail} · {'★'.repeat(review.rating)} ({review.rating}/5)</span></div>
+                    <p>{review.comment}</p>
+                    <time dateTime={review.createdAt}>{new Date(review.createdAt).toLocaleString()}</time>
+                  </li>
+                ))}
+              </ul>
             )}
             {total > 25 ? <div className="pagination-controls"><button className="secondary-button" disabled={page === 1} onClick={() => setPage((current) => current - 1)}>Previous</button><span>Page {page} of {Math.ceil(total / 25)}</span><button className="secondary-button" disabled={page >= Math.ceil(total / 25)} onClick={() => setPage((current) => current + 1)}>Next</button></div> : null}
           </section>

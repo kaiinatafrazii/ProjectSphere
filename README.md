@@ -300,6 +300,7 @@ The following endpoints are documented for the application.
 |---|---|---|
 | GET | `/api/admin/overview` | Admin dashboard statistics |
 | GET | `/api/admin/projects` | Retrieve projects for moderation |
+| GET | `/api/admin/reviews` | View and search persisted project reviews |
 | POST | `/api/admin/projects/:id/moderate` | Moderate a project |
 | GET | `/api/admin/users` | Retrieve users |
 | GET | `/api/admin/history` | Retrieve moderation history |

@@ -18,6 +18,7 @@ const adminNavigation = [
   { to: '/admin/projects/approved', label: 'Approved projects', icon: 'check' },
   { to: '/admin/projects/rejected', label: 'Rejected projects', icon: 'close' },
   { to: '/admin/users', label: 'User management', icon: 'users' },
+  { to: '/admin/reviews', label: 'Ratings & reviews', icon: 'star' },
   { to: '/admin/moderation-history', label: 'Moderation history', icon: 'history' },
 ];
 
@@ -34,6 +35,7 @@ const pageTitles = {
   '/admin/projects/approved': 'Approved projects',
   '/admin/projects/rejected': 'Rejected projects',
   '/admin/users': 'User management',
+  '/admin/reviews': 'Ratings & reviews',
   '/admin/moderation-history': 'Moderation history',
 };
 
