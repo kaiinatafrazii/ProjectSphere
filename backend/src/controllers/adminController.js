@@ -179,6 +179,10 @@ export async function getAdminProjectDetails(req, res) {
        WHERE r.project_id = ? ORDER BY r.created_at DESC LIMIT 100`,
       [req.params.id]
     );
+    const [reviewSummary] = await pool.execute(
+      'SELECT COUNT(*) AS reviewCount, AVG(rating) AS ratingAverage FROM project_reviews WHERE project_id = ?',
+      [req.params.id]
+    );
     const [history] = await pool.execute(
       `SELECT h.action, h.previous_status AS previousStatus,
         h.resulting_status AS resultingStatus, h.feedback,
@@ -192,10 +196,10 @@ export async function getAdminProjectDetails(req, res) {
       project: {
         ...project,
         techStack: parseTechStack(project.techStack),
-        reviewCount: reviews.length,
-        ratingAverage: reviews.length
-          ? Number((reviews.reduce((sum, review) => sum + Number(review.rating), 0) / reviews.length).toFixed(1))
-          : null,
+        reviewCount: Number(reviewSummary[0].reviewCount),
+        ratingAverage: reviewSummary[0].ratingAverage === null
+          ? null
+          : Number(Number(reviewSummary[0].ratingAverage).toFixed(1)),
         sourceCode: project.sourceFilename ? {
           originalFilename: project.sourceFilename,
           sizeBytes: Number(project.sourceSizeBytes),

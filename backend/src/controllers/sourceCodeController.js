@@ -172,31 +172,32 @@ export async function downloadProjectSourceCode(req, res) {
     res.setHeader('Content-Length', content.length);
     res.setHeader('Content-Disposition', `attachment; filename="${archive.originalFilename.replace(/["\\\r\n]/g, '_')}"`);
     res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Cache-Control', 'private, no-store');
     return res.status(200).send(content);
   } catch (error) {
     console.error('Private source-code download failed:', error);
     return sendError(res, 500, 'Unable to download the private source-code archive.');
   }
+}
 
-  export async function getOwnSourceCodeMetadata(req, res) {
-    try {
-      const [projects] = await pool.execute(
-        'SELECT id, user_id FROM projects WHERE id = ?',
-        [req.params.id]
-      );
-      if (!projects[0] || projects[0].user_id !== req.user.id) {
-        return sendError(res, 404, 'Project not found.');
-      }
-      const [rows] = await pool.execute(
-        `SELECT original_filename AS originalFilename, size_bytes AS sizeBytes,
-          sha256, submitted_at AS submittedAt
-         FROM project_source_code WHERE project_id = ? AND owner_id = ?`,
-        [req.params.id, req.user.id]
-      );
-      return sendSuccess(res, { sourceCode: rows[0] || null });
-    } catch (error) {
-      console.error('Project source-code metadata retrieval failed:', error);
-      return sendError(res, 500, 'Unable to load source-code submission status.');
+export async function getOwnSourceCodeMetadata(req, res) {
+  try {
+    const [projects] = await pool.execute(
+      'SELECT id, user_id FROM projects WHERE id = ?',
+      [req.params.id]
+    );
+    if (!projects[0] || projects[0].user_id !== req.user.id) {
+      return sendError(res, 404, 'Project not found.');
     }
+    const [rows] = await pool.execute(
+      `SELECT original_filename AS originalFilename, size_bytes AS sizeBytes,
+        sha256, submitted_at AS submittedAt
+       FROM project_source_code WHERE project_id = ? AND owner_id = ?`,
+      [req.params.id, req.user.id]
+    );
+    return sendSuccess(res, { sourceCode: rows[0] || null });
+  } catch (error) {
+    console.error('Project source-code metadata retrieval failed:', error);
+    return sendError(res, 500, 'Unable to load source-code submission status.');
   }
 }

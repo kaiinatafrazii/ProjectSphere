@@ -16,12 +16,12 @@ test('SQLite initializes persistently and supports the account, project, review,
   const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map(({ name }) => name);
   for (const table of [
     'users', 'projects', 'project_reviews', 'saved_projects', 'auth_sessions',
-    'contact_messages', 'project_moderation_history',
+    'contact_messages', 'project_moderation_history', 'project_source_code',
   ]) {
     assert.ok(tables.includes(table), `${table} table exists`);
   }
   assert.equal(db.pragma('foreign_keys', { simple: true }), 1);
-  assert.equal(db.pragma('user_version', { simple: true }), 2);
+  assert.equal(db.pragma('user_version', { simple: true }), 3);
   assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_contact_messages_read_created'").get());
   assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_projects_status_created'").get());
 
@@ -63,17 +63,19 @@ test('SQLite initializes persistently and supports the account, project, review,
   const baseUrl = `http://127.0.0.1:${server.address().port}/api`;
 
   async function request(url, { method = 'GET', body, cookie } = {}) {
+    const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
     const response = await fetch(`${baseUrl}${url}`, {
       method,
       headers: {
-        ...(body ? { 'content-type': 'application/json' } : {}),
+        ...(body && !isFormData ? { 'content-type': 'application/json' } : {}),
         ...(cookie ? { cookie } : {}),
       },
-      ...(body ? { body: JSON.stringify(body) } : {}),
+      ...(body ? { body: isFormData ? body : JSON.stringify(body) } : {}),
     });
+    const contentType = response.headers.get('content-type') || '';
     return {
       status: response.status,
-      body: await response.json(),
+      body: contentType.includes('application/json') ? await response.json() : await response.arrayBuffer(),
       cookie: response.headers.get('set-cookie')?.split(';')[0],
     };
   }
@@ -174,6 +176,51 @@ test('SQLite initializes persistently and supports the account, project, review,
   assert.equal(db.prepare('SELECT status FROM projects WHERE id = ?').get(projectId).status, 'pending');
 
   const reviewer = await register('reviewer@example.test', 'Project Reviewer');
+  const pendingProjectsForPublic = await request('/projects');
+  assert.equal(pendingProjectsForPublic.body.projects.some((project) => project.id === projectId), false);
+  const pendingProjectDetails = await request(`/projects/${projectId}`);
+  assert.equal(pendingProjectDetails.status, 404);
+  const pendingProjectOwner = await request(`/projects/${projectId}/source-code`, { cookie: reviewer.cookie });
+  assert.equal(pendingProjectOwner.status, 404);
+  const anonymousSourceMetadata = await request(`/projects/${projectId}/source-code`);
+  assert.equal(anonymousSourceMetadata.status, 401);
+
+  const invalidArchive = new FormData();
+  invalidArchive.append('sourceCode', new Blob(['not a zip'], { type: 'application/zip' }), 'invalid.zip');
+  const invalidArchiveResponse = await request(`/projects/${projectId}/source-code`, {
+    method: 'POST',
+    cookie: owner.cookie,
+    body: invalidArchive,
+  });
+  assert.equal(invalidArchiveResponse.status, 400);
+  assert.equal(db.prepare('SELECT COUNT(*) AS count FROM project_source_code WHERE project_id = ?').get(projectId).count, 0);
+
+  const sourceArchive = new FormData();
+  sourceArchive.append('sourceCode', new Blob([Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x14, 0x00])], { type: 'application/zip' }), '../../private-project.zip');
+  const uploadedArchive = await request(`/projects/${projectId}/source-code`, {
+    method: 'POST',
+    cookie: owner.cookie,
+    body: sourceArchive,
+  });
+  assert.equal(uploadedArchive.status, 201);
+  assert.equal(uploadedArchive.body.sourceCode.originalFilename, 'private-project.zip');
+  assert.equal(Object.hasOwn(uploadedArchive.body.sourceCode, 'storageKey'), false);
+  const ownerSourceMetadata = await request(`/projects/${projectId}/source-code`, { cookie: owner.cookie });
+  assert.equal(ownerSourceMetadata.status, 200);
+  assert.equal(ownerSourceMetadata.body.sourceCode.originalFilename, 'private-project.zip');
+  const nonOwnerArchiveAttempt = new FormData();
+  nonOwnerArchiveAttempt.append('sourceCode', new Blob([Buffer.from([0x50, 0x4b, 0x03, 0x04])], { type: 'application/zip' }), 'other.zip');
+  const reviewerUploadAttempt = await request(`/projects/${projectId}/source-code`, {
+    method: 'POST',
+    cookie: reviewer.cookie,
+    body: nonOwnerArchiveAttempt,
+  });
+  assert.equal(reviewerUploadAttempt.status, 404);
+  const reviewerSourceDownload = await request(`/admin/projects/${projectId}/source-code/download`, { cookie: reviewer.cookie });
+  assert.equal(reviewerSourceDownload.status, 403);
+  const anonymousSourceDownload = await request(`/admin/projects/${projectId}/source-code/download`);
+  assert.equal(anonymousSourceDownload.status, 401);
+
   const regularUserAdminAccess = await request('/admin/overview', { cookie: reviewer.cookie });
   assert.equal(regularUserAdminAccess.status, 403);
 
@@ -240,6 +287,14 @@ test('SQLite initializes persistently and supports the account, project, review,
   assert.equal(adminProjects.status, 200);
   assert.ok(adminProjects.body.projects.some((project) => project.id === projectId));
   assert.deepEqual(adminProjects.body.projects.find((project) => project.id === projectId).techStack, ['Node.js', 'SQLite']);
+  const adminProjectDetails = await request(`/admin/projects/${projectId}`, { cookie: adminLogin.cookie });
+  assert.equal(adminProjectDetails.status, 200);
+  assert.equal(adminProjectDetails.body.project.ownerEmail, 'owner@example.test');
+  assert.equal(adminProjectDetails.body.project.sourceCode.originalFilename, 'private-project.zip');
+  assert.equal(Object.hasOwn(adminProjectDetails.body.project.sourceCode, 'storageKey'), false);
+  const adminArchiveDownload = await request(`/admin/projects/${projectId}/source-code/download`, { cookie: adminLogin.cookie });
+  assert.equal(adminArchiveDownload.status, 200);
+  assert.deepEqual(Buffer.from(adminArchiveDownload.body), Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x14, 0x00]));
 
   const rejected = await request(`/admin/projects/${projectId}/moderate`, {
     method: 'POST',
@@ -258,6 +313,15 @@ test('SQLite initializes persistently and supports the account, project, review,
   }).then((response) => assert.equal(response.status, 200));
   const discovered = await request('/projects');
   assert.ok(discovered.body.projects.some((project) => project.id === projectId));
+  const publicProject = await request(`/projects/${projectId}`);
+  assert.equal(publicProject.status, 200);
+  assert.equal(publicProject.body.project.owner.name, 'Updated Project Owner');
+  assert.equal(Object.hasOwn(publicProject.body.project, 'sourceCode'), false);
+  assert.equal(Object.hasOwn(publicProject.body.project, 'sourceFilename'), false);
+  const sortedProjects = await request('/projects?sort=rating&page=1&limit=1');
+  assert.equal(sortedProjects.body.projects.length, 1);
+  assert.equal(sortedProjects.body.page, 1);
+  assert.equal(typeof sortedProjects.body.total, 'number');
 
   const firstReview = await request(`/projects/${projectId}/reviews`, {
     method: 'POST',
@@ -405,7 +469,8 @@ test('SQLite upgrades an existing schema version without resetting its records',
     import { db } from './src/config/db.js';
     const user = db.prepare('SELECT name FROM users WHERE id = ?').get('legacy-admin');
     const contactReadColumn = db.pragma('table_info(contact_messages)').some((column) => column.name === 'is_read');
-    if (db.pragma('user_version', { simple: true }) !== 2 || user?.name !== 'Legacy Admin' || !contactReadColumn) process.exitCode = 1;
+    const sourceTable = db.prepare(\"SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'project_source_code'\").get();
+    if (db.pragma('user_version', { simple: true }) !== 3 || user?.name !== 'Legacy Admin' || !contactReadColumn || !sourceTable) process.exitCode = 1;
     db.close();
   `], {
     cwd: backendDirectory,

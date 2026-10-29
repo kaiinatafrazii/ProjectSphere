@@ -26,6 +26,7 @@ const pageMetadata = [
   { match: (path) => path === '/', title: 'ProjectSphere — Discover and share developer projects', description: 'Discover remarkable developer projects, share your work, explore technologies, and learn from community reviews.' },
   { match: (path) => path === '/discover' || path === '/explore', title: 'Discover Projects — ProjectSphere', description: 'Search and explore projects shared by developers, students, and research teams.' },
   { match: (path) => path.startsWith('/projects/'), title: 'Project details — ProjectSphere', description: 'Explore a project, its technologies, and community feedback on ProjectSphere.' },
+  { match: (path) => path.startsWith('/creators/'), title: 'Creator profile — ProjectSphere', description: 'Explore a ProjectSphere creator profile and published projects.' },
   { match: (path) => path === '/login', title: 'Log in — ProjectSphere', description: 'Log in to your ProjectSphere account.' },
   { match: (path) => path === '/admin/login', title: 'Administrator login — ProjectSphere', description: 'Sign in to the ProjectSphere administration dashboard.' },
   { match: (path) => path === '/register', title: 'Create an account — ProjectSphere', description: 'Create a ProjectSphere profile to publish projects and take part in the community.' },

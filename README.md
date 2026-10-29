@@ -20,6 +20,8 @@ The platform features a modern React frontend, a Node.js and Express REST API, s
 - Track project moderation status.
 - View administrator feedback on submissions.
 - Access project information and relevant repository or demo links.
+- Upload an optional private ZIP source archive for administrator review.
+- Private archives are never included in public project responses.
 
 ### User Dashboard
 - Dashboard with database-backed project statistics.
@@ -162,7 +164,7 @@ Copy `.env.example` to `.env` and configure a strong JWT secret, SQLite database
 
 ### 4. Initialize SQLite
 
-The backend creates `backend/data/projectsphere.sqlite` and applies the versioned SQLite schema automatically on first startup. Set `SQLITE_DB_PATH` in `backend/.env` to use a different persistent file. SQLite data, WAL, SHM, and journal files are excluded from Git and are not served publicly.
+The backend creates `backend/data/projectsphere.sqlite` and applies the versioned SQLite schema automatically on first startup. Set `SQLITE_DB_PATH` in `backend/.env` to use a different persistent file. SQLite data, private ZIP archives, WAL, SHM, and journal files are excluded from Git and are not served publicly. Private source archives default to `backend/data/private-source-code`; `SOURCE_CODE_STORAGE_DIR` can override this with a directory outside public web directories.
 
 ### 5. Import existing MySQL data (if applicable)
 
@@ -229,6 +231,7 @@ Open the frontend URL in your browser.
 | `/discover` | Project discovery |
 | `/explore` | Alternative discovery route |
 | `/projects/:id` | Project details |
+| `/creators/:id` | Public profile and published projects for a creator |
 | `/about` | About ProjectSphere |
 | `/contact` | Contact form |
 | `/login` | User login |
@@ -292,6 +295,7 @@ The following endpoints are documented for the application.
 | GET | `/api/projects/:id` | Retrieve project details |
 | POST | `/api/projects` | Submit a project |
 | PUT | `/api/projects/:id` | Update an owned project |
+| GET/POST | `/api/projects/:id/source-code` | View your archive metadata or submit/replace your private ZIP archive |
 | DELETE | `/api/projects/:id` | Delete an owned project |
 | POST | `/api/projects/:id/reviews` | Submit or update a review |
 | POST/DELETE | `/api/projects/:id/bookmark` | Save or remove a bookmark |
@@ -304,6 +308,8 @@ The following endpoints are documented for the application.
 |---|---|---|
 | GET | `/api/admin/overview` | Admin dashboard statistics |
 | GET | `/api/admin/projects` | Retrieve projects for moderation |
+| GET | `/api/admin/projects/:id` | View full project, owner, reviews, moderation history, and private archive metadata |
+| GET | `/api/admin/projects/:id/source-code/download` | Download a private project ZIP archive |
 | GET | `/api/admin/reviews` | View and search persisted project reviews |
 | POST | `/api/admin/projects/:id/moderate` | Moderate a project |
 | GET | `/api/admin/users` | Retrieve users |
@@ -316,6 +322,8 @@ The following endpoints are documented for the application.
 | GET | `/api/users/:id` | Retrieve a user profile |
 
 Authentication, validation, ownership checks, and admin authorization are enforced server-side.
+
+Private archive uploads accept ZIP files up to 20 MB. The backend checks the extension, media type, and ZIP signature, assigns a generated storage key, and saves the file outside public web directories. Uploaded code is never extracted or executed. Only an authenticated administrator can download an archive; public project APIs never return private archive metadata or storage locations.
 
 ## Project Moderation Workflow
 

@@ -58,5 +58,5 @@ export async function downloadRequest(path, fallbackFilename = 'download.zip') {
   document.body.append(link);
   link.click();
   link.remove();
-  URL.revokeObjectURL(objectUrl);
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
 }
