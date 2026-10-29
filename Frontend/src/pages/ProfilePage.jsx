@@ -103,10 +103,10 @@ export default function ProfilePage() {
     setError('');
     resizeProfilePhoto(file)
       .then((imageData) => {
-      setForm((current) => ({ ...current, avatarUrl: imageData }));
-      setProfilePhotoCleared(false);
-      setError('');
-      setSuccess('');
+        setForm((current) => ({ ...current, avatarUrl: imageData }));
+        setProfilePhotoCleared(false);
+        setError('');
+        setSuccess('');
       })
       .catch((photoError) => setError(photoError.message))
       .finally(() => setProcessingPhoto(false));

@@ -2294,6 +2294,12 @@ select:focus-visible {
   gap: 20px;
 }
 
+.admin-profile-grid > .error-text,
+.admin-profile-grid > .success-text,
+.admin-profile-grid > .empty-state {
+  grid-column: 1 / -1;
+}
+
 .admin-profile-grid .dashboard-section {
   min-width: 0;
   margin: 0;
@@ -2305,6 +2311,25 @@ select:focus-visible {
 
 .admin-profile-grid .stacked-form {
   margin-top: 20px;
+}
+
+.admin-profile-avatar-editor {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+}
+
+.admin-profile-avatar-editor > img {
+  width: 96px;
+  height: 96px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.admin-profile-avatar-editor .field-help {
+  margin: 0;
+  color: var(--muted);
 }
 
 .admin-filter-check {
