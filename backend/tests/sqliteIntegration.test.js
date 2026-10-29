@@ -137,6 +137,22 @@ test('SQLite initializes persistently and supports the account, project, review,
     body: { name: 'Updated Project Owner', bio: '', location: '', skills: [], avatarUrl: 42 },
   });
   assert.equal(invalidProfilePhotoType.status, 400);
+  const removedProfilePhoto = await request('/users/me', {
+    method: 'PUT',
+    cookie: owner.cookie,
+    body: {
+      name: 'Updated Project Owner',
+      bio: '',
+      location: '',
+      skills: [],
+      avatarUrl: '',
+    },
+  });
+  assert.equal(removedProfilePhoto.status, 200);
+  assert.equal(removedProfilePhoto.body.user.avatarUrl, null);
+  assert.equal(db.prepare('SELECT avatar_url FROM users WHERE id = ?').get(owner.user.id).avatar_url, null);
+  const restoredAfterPhotoRemoval = await request('/auth/me', { cookie: owner.cookie });
+  assert.equal(restoredAfterPhotoRemoval.body.user.avatarUrl, null);
 
   const projectResponse = await request('/projects', {
     method: 'POST',

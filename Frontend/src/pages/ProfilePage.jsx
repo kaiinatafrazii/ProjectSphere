@@ -12,6 +12,7 @@ export default function ProfilePage() {
   const [success, setSuccess] = useState('');
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [processingPhoto, setProcessingPhoto] = useState(false);
   const [profilePhotoCleared, setProfilePhotoCleared] = useState(false);
   const [form, setForm] = useState({ name: '', bio: '', location: '', skills: '', avatarUrl: '' });
 
@@ -106,6 +107,8 @@ export default function ProfilePage() {
       return;
     }
 
+    setProcessingPhoto(true);
+    setError('');
     const image = new Image();
     const objectUrl = URL.createObjectURL(file);
     image.onload = () => {
@@ -117,12 +120,20 @@ export default function ProfilePage() {
       canvas.height = Math.max(1, Math.round(image.height * scale));
       const context = canvas.getContext('2d');
       if (!context) {
+        setProcessingPhoto(false);
         setError('This image could not be processed. Try another image.');
         return;
       }
       context.drawImage(image, 0, 0, canvas.width, canvas.height);
-      const imageData = canvas.toDataURL('image/jpeg', 0.78);
-      if (imageData.length > 700000) {
+      let imageData = '';
+      for (const quality of [0.78, 0.68, 0.58, 0.48]) {
+        imageData = canvas.toDataURL('image/jpeg', quality);
+        const base64Length = imageData.length - 'data:image/jpeg;base64,'.length;
+        if (Math.ceil(base64Length * 3 / 4) <= 512000) break;
+        imageData = '';
+      }
+      if (!imageData) {
+        setProcessingPhoto(false);
         setError('This image is too detailed to save. Choose a smaller image.');
         return;
       }
@@ -130,9 +141,11 @@ export default function ProfilePage() {
       setProfilePhotoCleared(false);
       setError('');
       setSuccess('');
+      setProcessingPhoto(false);
     };
     image.onerror = () => {
       URL.revokeObjectURL(objectUrl);
+      setProcessingPhoto(false);
       setError('This image could not be read. Try another image.');
     };
     image.src = objectUrl;
@@ -155,7 +168,7 @@ export default function ProfilePage() {
       <section className="section-block">
         <div className="container profile-layout">
           <div className="profile-card">
-            <img src={profile?.avatarUrl || user?.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=500&q=80'} alt={`${profile?.name || user?.name}'s profile`} />
+            <img src={profile?.avatarUrl || '/favicon.svg'} alt={`${profile?.name || user?.name}'s profile`} />
             <div>
               <span className="eyebrow">Creator profile</span>
               <h1>{profile?.name || user?.name}</h1>
@@ -178,20 +191,20 @@ export default function ProfilePage() {
               <label>Name<input value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} maxLength={100} required /></label>
               <div className="profile-photo-editor">
                 <img
-                  src={form.avatarUrl || (profilePhotoCleared ? '/favicon.svg' : profile?.avatarUrl || user?.avatarUrl || '/favicon.svg')}
+                  src={form.avatarUrl || (profilePhotoCleared ? '/favicon.svg' : profile?.avatarUrl || '/favicon.svg')}
                   alt="Profile photo preview"
                 />
                 <label>
                   Profile photo
                   <input type="file" accept="image/jpeg,image/png,image/webp" onChange={chooseProfilePhoto} />
                 </label>
-                <p className="field-help">JPG, PNG, or WebP, up to 5 MB. Images are resized before saving.</p>
+                <p className="field-help">{processingPhoto ? 'Preparing photo…' : 'JPG, PNG, or WebP, up to 5 MB. Images are resized before saving.'}</p>
                 {form.avatarUrl ? <button className="link-button" type="button" onClick={() => { setForm((current) => ({ ...current, avatarUrl: '' })); setProfilePhotoCleared(true); }}>Remove profile photo</button> : null}
               </div>
               <label>Bio<textarea value={form.bio} onChange={(event) => setForm((current) => ({ ...current, bio: event.target.value }))} rows={4} maxLength={1000} /></label>
               <label>Location<input value={form.location} onChange={(event) => setForm((current) => ({ ...current, location: event.target.value }))} maxLength={100} /></label>
               <label>Skills (comma separated)<input value={form.skills} onChange={(event) => setForm((current) => ({ ...current, skills: event.target.value }))} placeholder="React, Node.js" /></label>
-              <button className="primary-button" type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save profile'}</button>
+              <button className="primary-button" type="submit" disabled={saving || processingPhoto}>{saving ? 'Saving…' : processingPhoto ? 'Preparing photo…' : 'Save profile'}</button>
             </form>
           ) : null}
 

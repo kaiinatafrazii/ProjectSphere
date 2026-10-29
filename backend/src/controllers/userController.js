@@ -17,7 +17,7 @@ export async function getUserProfile(req, res) {
         location: user.location || '',
         skills: typeof user.skills === 'string' ? JSON.parse(user.skills) : user.skills || [],
         role: user.role || 'student',
-        avatarUrl: user.avatar_url || user.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=500&q=80',
+        avatarUrl: user.avatar_url || user.avatarUrl || null,
         createdAt: user.created_at || user.createdAt,
       },
     });
@@ -96,7 +96,7 @@ export async function updateOwnProfile(req, res) {
         location: user.location || '',
         skills: typeof user.skills === 'string' ? JSON.parse(user.skills) : user.skills || [],
         role: user.role || 'student',
-        avatarUrl: user.avatar_url || user.avatarUrl,
+        avatarUrl: user.avatar_url || user.avatarUrl || null,
         createdAt: user.created_at || user.createdAt,
       },
     });
