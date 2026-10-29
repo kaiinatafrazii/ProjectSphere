@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
-    "test": "node --test"
+    "test": "node --import ./tests/setup.js --test",
+    "migrate:mysql": "node scripts/import-mysql.js",
+    "seed:dev": "node seeds/seed-development.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

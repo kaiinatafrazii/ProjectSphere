@@ -17,6 +17,18 @@ backend/node_modules/
 backend/.env
 backend/.env.*
 !backend/.env.example
+backend/data/
+*.sqlite
+*.sqlite3
+*.db-wal
+*.db-shm
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite3-wal
+*.sqlite3-shm
+*.db-journal
+*.sqlite-journal
+*.sqlite3-journal
 
 # OS & editor
 .DS_Store
