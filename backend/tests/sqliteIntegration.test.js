@@ -110,6 +110,8 @@ test('SQLite initializes persistently and supports the account, project, review,
   assert.equal(profileUpdate.body.user.avatarUrl, profilePhoto);
   assert.equal(profileUpdate.body.user.role, 'student');
   assert.equal(db.prepare('SELECT avatar_url FROM users WHERE id = ?').get(owner.user.id).avatar_url, profilePhoto);
+  const restoredProfile = await request('/auth/me', { cookie: owner.cookie });
+  assert.equal(restoredProfile.body.user.avatarUrl, profilePhoto);
   const invalidProfilePhoto = await request('/users/me', {
     method: 'PUT',
     cookie: owner.cookie,
