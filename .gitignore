@@ -1,0 +1,25 @@
+﻿# Root
+node_modules/
+.env
+.env.*
+!.env.example
+
+# Frontend
+Frontend/node_modules/
+Frontend/dist/
+Frontend/.vite/
+
+# Backend
+backend/node_modules/
+backend/.env
+backend/.env.*
+!backend/.env.example
+
+# OS & editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+*.log

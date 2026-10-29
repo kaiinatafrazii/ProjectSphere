@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="ProjectSphere logo">
+  <rect width="128" height="128" rx="28" fill="#145C5A"/>
+  <path d="M34 91V37h18.5c16.8 0 26.8 9.1 26.8 26.4 0 18.6-10.1 27.6-26.8 27.6H34zm18.3-14.4h2.9c7.7 0 12.2-4 12.2-12.2 0-8.4-4.5-12.8-12.2-12.8h-2.9v25z" fill="#fff"/>
+  <path d="M80 91V37h12v54H80z" fill="#D7F3F1"/>
+</svg>

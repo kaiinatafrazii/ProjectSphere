@@ -1,0 +1,159 @@
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
+import { apiRequest } from '../services/api.js';
+
+export default function ProjectDetailsPage() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [project, setProject] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' });
+
+  useEffect(() => {
+    async function loadProject() {
+      try {
+        const response = await apiRequest(`/projects/${id}`);
+        setProject(response.project);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadProject();
+  }, [id]);
+
+  const handleSubmitReview = async (event) => {
+    event.preventDefault();
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    try {
+      await apiRequest(`/projects/${id}/reviews`, {
+        method: 'POST',
+        body: JSON.stringify(reviewForm),
+      });
+      setReviewForm({ rating: 5, comment: '' });
+      const response = await apiRequest(`/projects/${id}`);
+      setProject(response.project);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  if (loading) return <div className="page-shell center-block"><div className="empty-state">Loading project details...</div></div>;
+  if (!project) return <div className="page-shell center-block"><div className="empty-state">Project not found.</div></div>;
+
+  return (
+    <div className="page-shell detail-page">
+      <section className="project-hero">
+        <div className="container project-hero-grid">
+          <div>
+            <span className="eyebrow">{project.category}</span>
+            <h1>{project.title}</h1>
+            <p className="project-tagline large">{project.tagline}</p>
+            <div className="hero-actions compact">
+              {project.liveUrl ? <a href={project.liveUrl} className="primary-button" target="_blank" rel="noreferrer">Live demo</a> : null}
+              {project.repoUrl ? <a href={project.repoUrl} className="secondary-button light" target="_blank" rel="noreferrer">Source code</a> : null}
+            </div>
+          </div>
+          <div className="project-hero-media">
+            <img src={project.screenshotUrl} alt={project.title} />
+          </div>
+        </div>
+      </section>
+
+      <section className="section-block">
+        <div className="container project-layout">
+          <div className="project-content">
+            <div className="card-panel">
+              <h2>Overview</h2>
+              <p>{project.overview}</p>
+            </div>
+
+            <div className="card-panel">
+              <h2>Tech stack</h2>
+              <div className="tech-stack large-stack">
+                {(project.techStack || []).map((tech) => (
+                  <span key={tech}>{tech}</span>
+                ))}
+              </div>
+            </div>
+
+            <div className="card-panel">
+              <h2>Reviews</h2>
+              {project.reviews && project.reviews.length > 0 ? (
+                <div className="review-list">
+                  {project.reviews.map((review) => (
+                    <div key={review.id} className="review-item">
+                      <div className="review-header">
+                        <strong>{review.userName || 'Anonymous reviewer'}</strong>
+                        <span>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span>
+                      </div>
+                      <p>{review.comment}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="muted-copy">No reviews yet. Be the first to share feedback.</p>
+              )}
+            </div>
+          </div>
+
+          <aside className="project-sidebar">
+            <div className="card-panel sticky-panel">
+              <div className="profile-mini">
+                <img src={project.owner?.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=500&q=80'} alt={project.owner?.name || 'Project owner'} />
+                <div>
+                  <strong>{project.owner?.name || 'Creator'}</strong>
+                  <p>{project.owner ? 'Project author' : 'Community creator'}</p>
+                </div>
+              </div>
+
+              <dl className="stats-list">
+                <div>
+                  <dt>Views</dt>
+                  <dd>{project.views}</dd>
+                </div>
+                <div>
+                  <dt>Likes</dt>
+                  <dd>{project.likes}</dd>
+                </div>
+                <div>
+                  <dt>Reviews</dt>
+                  <dd>{project.reviews?.length || 0}</dd>
+                </div>
+              </dl>
+            </div>
+
+            <div className="card-panel">
+              <h3>Leave feedback</h3>
+              <form className="review-form" onSubmit={handleSubmitReview}>
+                <label>
+                  Rating
+                  <select value={reviewForm.rating} onChange={(event) => setReviewForm({ ...reviewForm, rating: Number(event.target.value) })}>
+                    <option value={5}>5 stars</option>
+                    <option value={4}>4 stars</option>
+                    <option value={3}>3 stars</option>
+                    <option value={2}>2 stars</option>
+                    <option value={1}>1 star</option>
+                  </select>
+                </label>
+                <label>
+                  Comment
+                  <textarea value={reviewForm.comment} onChange={(event) => setReviewForm({ ...reviewForm, comment: event.target.value })} rows={4} placeholder="Share your feedback..." />
+                </label>
+                <button type="submit" className="primary-button full-width">Submit review</button>
+              </form>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </div>
+  );
+}
