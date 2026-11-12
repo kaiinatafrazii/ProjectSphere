@@ -124,7 +124,7 @@ export default function DashboardLayout({ admin = false }) {
     setLogoutError('');
     try {
       await logout();
-      navigate('/', { replace: true });
+      window.location.replace('/');
     } catch (error) {
       setLogoutError(error.message || 'Unable to log out. Please try again.');
     } finally {
