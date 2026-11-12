@@ -98,7 +98,8 @@ export default function Layout() {
     setLogoutError('');
     setLoggingOut(true);
     try {
-      await logout(() => navigate('/', { replace: true }));
+      await logout();
+      navigate('/', { replace: true });
     } catch (error) {
       setLogoutError(error.message || 'Unable to log out. Please try again.');
     } finally {
