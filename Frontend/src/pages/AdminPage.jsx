@@ -32,6 +32,7 @@ export default function AdminPage() {
   const [selectedUser, setSelectedUser] = useState('');
   const [userDetails, setUserDetails] = useState(null);
   const [userDetailsLoading, setUserDetailsLoading] = useState(false);
+  const [busyUserId, setBusyUserId] = useState('');
   const [selectedProject, setSelectedProject] = useState('');
   const [projectDetails, setProjectDetails] = useState(null);
   const [projectDetailsLoading, setProjectDetailsLoading] = useState(false);
@@ -127,6 +128,29 @@ export default function AdminPage() {
       setSelectedUser('');
     } finally {
       setUserDetailsLoading(false);
+    }
+  };
+
+  const changeUserStatus = async (target) => {
+    const accountStatus = target.accountStatus === 'suspended' ? 'active' : 'suspended';
+    if (accountStatus === 'suspended' && !window.confirm(`Suspend ${target.name}'s account and end their active sessions?`)) return;
+    setBusyUserId(target.id);
+    setError('');
+    setNotice('');
+    try {
+      const response = await apiRequest(`/admin/users/${encodeURIComponent(target.id)}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ accountStatus }),
+      });
+      setRows((current) => current.map((user) => user.id === target.id ? { ...user, accountStatus } : user));
+      setUserDetails((current) => current?.user.id === target.id
+        ? { ...current, user: { ...current.user, accountStatus } }
+        : current);
+      setNotice(response.message || 'User account status updated.');
+    } catch (statusError) {
+      setError(statusError.message || 'Unable to update user account status.');
+    } finally {
+      setBusyUserId('');
     }
   };
 
@@ -333,8 +357,13 @@ export default function AdminPage() {
               <div className="admin-record-list">
                 {rows.map((user) => (
                   <article className="admin-record admin-user-row" key={user.id}>
-                    <div className="admin-record-main"><strong>{user.name}</strong><span>{user.email}</span><span>{user.role} · joined {new Date(user.createdAt).toLocaleDateString()}</span><span>{user.projectCount} projects ({user.pendingProjectCount} pending) · {user.reviewCount} reviews</span></div>
-                    <button className="secondary-button" type="button" onClick={() => openUserDetails(user.id)}>View details</button>
+                    <div className="admin-record-main"><strong>{user.name}</strong><span>{user.email}</span><span>{user.role} · joined {new Date(user.createdAt).toLocaleDateString()}</span><span>{user.projectCount} projects ({user.pendingProjectCount} pending) · {user.reviewCount} reviews</span><span className={`status-badge ${user.accountStatus === 'suspended' ? 'status-rejected' : 'status-published'}`}>{user.accountStatus || 'active'}</span></div>
+                    <div className="dashboard-project-actions">
+                      <button className="secondary-button" type="button" onClick={() => openUserDetails(user.id)}>View details</button>
+                      <button className={`secondary-button${user.accountStatus === 'suspended' ? '' : ' danger-button'}`} type="button" disabled={busyUserId === user.id} onClick={() => changeUserStatus(user)}>
+                        {busyUserId === user.id ? 'Saving…' : user.accountStatus === 'suspended' ? 'Reactivate' : 'Suspend'}
+                      </button>
+                    </div>
                   </article>
                 ))}
               </div>
@@ -345,7 +374,10 @@ export default function AdminPage() {
                 {userDetailsLoading ? <p role="status">Loading user details…</p> : null}
                 {userDetails ? (
                   <>
-                    <p><strong>{userDetails.user.name}</strong> · {userDetails.user.email} · {userDetails.user.role}{userDetails.user.location ? ` · ${userDetails.user.location}` : ''}</p>
+                    <p><strong>{userDetails.user.name}</strong> · {userDetails.user.email} · {userDetails.user.role} · {userDetails.user.accountStatus || 'active'}{userDetails.user.location ? ` · ${userDetails.user.location}` : ''}</p>
+                    <button className={`secondary-button${userDetails.user.accountStatus === 'suspended' ? '' : ' danger-button'}`} type="button" disabled={busyUserId === userDetails.user.id} onClick={() => changeUserStatus(userDetails.user)}>
+                      {busyUserId === userDetails.user.id ? 'Saving…' : userDetails.user.accountStatus === 'suspended' ? 'Reactivate account' : 'Suspend account'}
+                    </button>
                     {userDetails.user.bio ? <p>{userDetails.user.bio}</p> : null}
                     <div className="dashboard-stats"><article><span>Projects</span><strong>{userDetails.stats.totalProjects}</strong></article><article><span>Approved</span><strong>{userDetails.stats.approvedProjects}</strong></article><article><span>Pending</span><strong>{userDetails.stats.pendingProjects}</strong></article><article><span>Rejected</span><strong>{userDetails.stats.rejectedProjects}</strong></article><article><span>Reviews written</span><strong>{userDetails.stats.reviewsWritten}</strong></article></div>
                     <h4>Projects</h4>

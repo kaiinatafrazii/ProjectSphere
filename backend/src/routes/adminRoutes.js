@@ -1,6 +1,7 @@
 import express from 'express';
 import {
   getAdminOverview,
+  getAdminAnalytics,
   getAdminProfile,
   getAdminProjectDetails,
   getAdminUserDetails,
@@ -13,6 +14,8 @@ import {
   listModerationHistory,
   markContactMessageRead,
   moderateProject,
+  listProjectReports,
+  resolveProjectReport,
 } from '../controllers/adminController.js';
 import { requireAdmin, requireAuth } from '../middleware/auth.js';
 import { downloadProjectSourceCode } from '../controllers/sourceCodeController.js';
@@ -21,10 +24,13 @@ const router = express.Router();
 
 router.use(requireAuth, requireAdmin);
 router.get('/overview', getAdminOverview);
+router.get('/analytics', getAdminAnalytics);
 router.get('/projects', listAdminProjects);
 router.get('/projects/:id', getAdminProjectDetails);
 router.get('/projects/:id/source-code/download', downloadProjectSourceCode);
 router.get('/reviews', listAdminReviews);
+router.get('/reports', listProjectReports);
+router.patch('/reports/:id', resolveProjectReport);
 router.post('/projects/:id/moderate', moderateProject);
 router.get('/history', listModerationHistory);
 router.get('/users', listAdminUsers);

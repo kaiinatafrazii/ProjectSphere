@@ -17,6 +17,10 @@ export async function getUserProfile(req, res) {
         location: user.location || '',
         skills: typeof user.skills === 'string' ? JSON.parse(user.skills) : user.skills || [],
         role: user.role || 'student',
+        username: user.username || null,
+        githubUrl: user.github_url || null,
+        linkedinUrl: user.linkedin_url || null,
+        websiteUrl: user.website_url || null,
         avatarUrl: user.avatar_url || user.avatarUrl || null,
         createdAt: user.created_at || user.createdAt,
       },
@@ -34,6 +38,34 @@ export async function updateOwnProfile(req, res) {
   const normalizedBio = typeof bio === 'string' ? bio.trim() : '';
   const normalizedLocation = typeof location === 'string' ? location.trim() : '';
   const normalizedAvatarUrl = typeof avatarUrl === 'string' ? avatarUrl.trim() : '';
+  const optionalProfileFields = [
+    ['username', 'username'],
+    ['githubUrl', 'github_url'],
+    ['linkedinUrl', 'linkedin_url'],
+    ['websiteUrl', 'website_url'],
+  ];
+  const normalizedProfileFields = {};
+  for (const [field, column] of optionalProfileFields) {
+    if (!Object.hasOwn(req.body || {}, field)) continue;
+    const value = req.body[field];
+    if (typeof value !== 'string') return sendError(res, 400, `${field} must be text.`);
+    const normalized = value.trim();
+    if (field === 'username' && normalized && !/^[a-zA-Z0-9._-]{3,30}$/.test(normalized)) {
+      return sendError(res, 400, 'Username must be 3-30 characters using letters, numbers, dots, underscores, or hyphens.');
+    }
+    if (field !== 'username' && normalized) {
+      if (normalized.length > 500) return sendError(res, 400, 'Profile links must be 500 characters or fewer.');
+      try {
+        const parsed = new URL(normalized);
+        if (process.env.NODE_ENV === 'production' ? parsed.protocol !== 'https:' : !['http:', 'https:'].includes(parsed.protocol)) {
+          return sendError(res, 400, 'Profile links must use HTTPS.');
+        }
+      } catch {
+        return sendError(res, 400, 'Enter a valid profile URL.');
+      }
+    }
+    normalizedProfileFields[column] = field === 'username' ? normalized.toLowerCase() || null : normalized || null;
+  }
   if (avatarProvided && typeof avatarUrl !== 'string') {
     return sendError(res, 400, 'Profile photo must be a URL or resized JPEG image.');
   }
@@ -73,9 +105,20 @@ export async function updateOwnProfile(req, res) {
   }
 
   try {
+    if (Object.hasOwn(normalizedProfileFields, 'username') && normalizedProfileFields.username) {
+      const [existingNames] = await pool.execute(
+        'SELECT id FROM users WHERE username = ? COLLATE NOCASE AND id <> ?',
+        [normalizedProfileFields.username, req.user.id]
+      );
+      if (existingNames.length) return sendError(res, 409, 'That username is already in use.');
+    }
     await pool.execute(
       `UPDATE users SET name = ?, bio = ?, location = ?, skills = ?,
-       avatar_url = CASE WHEN ? THEN ? ELSE avatar_url END WHERE id = ?`,
+       avatar_url = CASE WHEN ? THEN ? ELSE avatar_url END,
+       username = CASE WHEN ? THEN ? ELSE username END,
+       github_url = CASE WHEN ? THEN ? ELSE github_url END,
+       linkedin_url = CASE WHEN ? THEN ? ELSE linkedin_url END,
+       website_url = CASE WHEN ? THEN ? ELSE website_url END WHERE id = ?`,
       [
         normalizedName,
         normalizedBio,
@@ -83,6 +126,14 @@ export async function updateOwnProfile(req, res) {
         JSON.stringify(skills.map((skill) => skill.trim()).filter(Boolean)),
         avatarProvided ? 1 : 0,
         normalizedAvatarUrl || null,
+        Object.hasOwn(normalizedProfileFields, 'username') ? 1 : 0,
+        normalizedProfileFields.username,
+        Object.hasOwn(normalizedProfileFields, 'github_url') ? 1 : 0,
+        normalizedProfileFields.github_url,
+        Object.hasOwn(normalizedProfileFields, 'linkedin_url') ? 1 : 0,
+        normalizedProfileFields.linkedin_url,
+        Object.hasOwn(normalizedProfileFields, 'website_url') ? 1 : 0,
+        normalizedProfileFields.website_url,
         req.user.id,
       ]
     );
@@ -96,6 +147,10 @@ export async function updateOwnProfile(req, res) {
         location: user.location || '',
         skills: typeof user.skills === 'string' ? JSON.parse(user.skills) : user.skills || [],
         role: user.role || 'student',
+        username: user.username || null,
+        githubUrl: user.github_url || null,
+        linkedinUrl: user.linkedin_url || null,
+        websiteUrl: user.website_url || null,
         avatarUrl: user.avatar_url || user.avatarUrl || null,
         createdAt: user.created_at || user.createdAt,
       },

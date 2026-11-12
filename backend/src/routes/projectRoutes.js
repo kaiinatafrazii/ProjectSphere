@@ -1,7 +1,8 @@
 import express from 'express';
 import { rateLimit } from 'express-rate-limit';
-import { addReviewHandler, getProjectByIdHandler, getProjectsHandler, publishProjectHandler } from '../controllers/projectController.js';
+import { addReviewHandler, getProjectByIdHandler, getProjectFiltersHandler, getProjectsHandler, publishProjectHandler } from '../controllers/projectController.js';
 import { requireAuth } from '../middleware/auth.js';
+import { submitProjectReport } from '../controllers/reportController.js';
 import { deleteMyProject, getMyDashboard, getMyProjects, updateMyProject } from '../controllers/dashboardController.js';
 import { removeSavedProject, saveProject } from '../controllers/bookmarkController.js';
 import {
@@ -20,7 +21,15 @@ const projectSubmissionLimiter = rateLimit({
   legacyHeaders: false,
   message: { success: false, message: 'Too many project submissions. Please try again later.' },
 });
+const projectReportLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many project reports. Please try again later.' },
+});
 
+router.get('/filters', getProjectFiltersHandler);
 router.get('/', getProjectsHandler);
 router.get('/mine', requireAuth, getMyProjects);
 router.get('/dashboard', requireAuth, getMyDashboard);
@@ -37,6 +46,7 @@ router.put('/:id', requireAuth, projectSubmissionLimiter, updateMyProject);
 router.delete('/:id', requireAuth, deleteMyProject);
 router.post('/:id/bookmark', requireAuth, saveProject);
 router.delete('/:id/bookmark', requireAuth, removeSavedProject);
+router.post('/:id/reports', requireAuth, projectReportLimiter, submitProjectReport);
 router.get('/:id', getProjectByIdHandler);
 router.post('/', requireAuth, projectSubmissionLimiter, publishProjectHandler);
 router.post('/:id/reviews', requireAuth, rateLimit({

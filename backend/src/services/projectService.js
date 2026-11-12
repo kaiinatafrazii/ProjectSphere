@@ -1,4 +1,4 @@
-import { createProject, createReview, findProjectById, listProjectReviews, listProjects } from '../repositories/projectRepository.js';
+import { createProject, createReview, findProjectById, incrementProjectViews, listProjectReviews, listProjects } from '../repositories/projectRepository.js';
 import { findUserById } from '../repositories/userRepository.js';
 import { generateId } from './authService.js';
 import { createUserNotification } from './notificationService.js';
@@ -63,6 +63,7 @@ export async function getProjects(filters = {}) {
 export async function getProjectByIdService(id) {
   const project = await findProjectById(id);
   if (!project) return null;
+  await incrementProjectViews(id);
   const owner = await findUserById(project.user_id || project.userId);
   const reviews = Array.isArray(project.reviews) ? project.reviews : await listProjectReviews(id);
   const ownerProjects = owner
@@ -80,7 +81,7 @@ export async function getProjectByIdService(id) {
     liveUrl: project.live_url || project.liveUrl,
     screenshotUrl: project.screenshot_url || project.screenshotUrl,
     likes: Number(project.likes || 0),
-    views: Number(project.views || 0),
+    views: Number(project.views || 0) + 1,
     status: project.status,
     createdAt: project.created_at || project.createdAt,
     owner: owner ? { id: owner.id, name: owner.name, avatarUrl: owner.avatar_url || owner.avatarUrl } : null,

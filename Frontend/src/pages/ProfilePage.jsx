@@ -1,3 +1,4 @@
+  const [form, setForm] = useState({ name: '', bio: '', location: '', skills: '', avatarUrl: '', username: '', githubUrl: '', linkedinUrl: '', websiteUrl: '' });
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -32,6 +33,10 @@ export default function ProfilePage() {
           location: userResponse.user.location || '',
           skills: (userResponse.user.skills || []).join(', '),
           avatarUrl: userResponse.user.avatarUrl || '',
+          username: userResponse.user.username || '',
+          githubUrl: userResponse.user.githubUrl || '',
+          linkedinUrl: userResponse.user.linkedinUrl || '',
+          websiteUrl: userResponse.user.websiteUrl || '',
         });
         setProjects((projectResponse.projects || []).filter((project) => project.owner?.id === user.id));
       } catch (error) {
@@ -58,6 +63,10 @@ export default function ProfilePage() {
           location: form.location,
           skills: form.skills.split(',').map((skill) => skill.trim()).filter(Boolean),
           avatarUrl: form.avatarUrl.trim(),
+          username: form.username,
+          githubUrl: form.githubUrl,
+          linkedinUrl: form.linkedinUrl,
+          websiteUrl: form.websiteUrl,
         }),
       });
       setProfile((current) => ({ ...current, ...response.user }));
@@ -80,6 +89,10 @@ export default function ProfilePage() {
         location: profile.location || '',
         skills: (profile.skills || []).join(', '),
         avatarUrl: profile.avatarUrl || '',
+        username: profile.username || '',
+        githubUrl: profile.githubUrl || '',
+        linkedinUrl: profile.linkedinUrl || '',
+        websiteUrl: profile.websiteUrl || '',
       });
     } else if (profile) {
       setForm({
@@ -88,6 +101,10 @@ export default function ProfilePage() {
         location: profile.location || '',
         skills: (profile.skills || []).join(', '),
         avatarUrl: profile.avatarUrl || '',
+        username: profile.username || '',
+        githubUrl: profile.githubUrl || '',
+        linkedinUrl: profile.linkedinUrl || '',
+        websiteUrl: profile.websiteUrl || '',
       });
     }
     setEditing((current) => !current);
@@ -121,6 +138,10 @@ export default function ProfilePage() {
         location: profile.location || '',
         skills: (profile.skills || []).join(', '),
         avatarUrl: profile.avatarUrl || '',
+        username: profile.username || '',
+        githubUrl: profile.githubUrl || '',
+        linkedinUrl: profile.linkedinUrl || '',
+        websiteUrl: profile.websiteUrl || '',
       });
       setEditing(true);
     }
@@ -170,6 +191,12 @@ export default function ProfilePage() {
                   <span key={item}>{item}</span>
                 ))}
               </div>
+              <div className="profile-external-links">
+                {profile?.username ? <span>@{profile.username}</span> : null}
+                {profile?.githubUrl ? <a href={profile.githubUrl} target="_blank" rel="noreferrer">GitHub</a> : null}
+                {profile?.linkedinUrl ? <a href={profile.linkedinUrl} target="_blank" rel="noreferrer">LinkedIn</a> : null}
+                {profile?.websiteUrl ? <a href={profile.websiteUrl} target="_blank" rel="noreferrer">Website</a> : null}
+              </div>
               <button type="button" className="secondary-button" onClick={toggleEditing}>
                 {editing ? 'Cancel editing' : 'Edit profile'}
               </button>
@@ -181,6 +208,7 @@ export default function ProfilePage() {
           {editing ? (
             <form className="card-panel stacked-form profile-edit-form" onSubmit={saveProfile}>
               <label>Name<input value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} maxLength={100} required /></label>
+              <label>Username<input value={form.username} onChange={(event) => setForm((current) => ({ ...current, username: event.target.value }))} maxLength={30} autoComplete="username" /></label>
               <div className="profile-photo-editor">
                 <img
                   src={form.avatarUrl || (profilePhotoCleared ? '/favicon.svg' : profile?.avatarUrl || '/favicon.svg')}
@@ -196,6 +224,9 @@ export default function ProfilePage() {
               <label>Bio<textarea value={form.bio} onChange={(event) => setForm((current) => ({ ...current, bio: event.target.value }))} rows={4} maxLength={1000} /></label>
               <label>Location<input value={form.location} onChange={(event) => setForm((current) => ({ ...current, location: event.target.value }))} maxLength={100} /></label>
               <label>Skills (comma separated)<input value={form.skills} onChange={(event) => setForm((current) => ({ ...current, skills: event.target.value }))} placeholder="React, Node.js" /></label>
+              <label>GitHub URL<input type="url" value={form.githubUrl} onChange={(event) => setForm((current) => ({ ...current, githubUrl: event.target.value }))} /></label>
+              <label>LinkedIn URL<input type="url" value={form.linkedinUrl} onChange={(event) => setForm((current) => ({ ...current, linkedinUrl: event.target.value }))} /></label>
+              <label>Website URL<input type="url" value={form.websiteUrl} onChange={(event) => setForm((current) => ({ ...current, websiteUrl: event.target.value }))} /></label>
               <button className="primary-button" type="submit" disabled={saving || processingPhoto}>{saving ? 'Saving…' : processingPhoto ? 'Preparing photo…' : 'Save profile'}</button>
             </form>
           ) : null}

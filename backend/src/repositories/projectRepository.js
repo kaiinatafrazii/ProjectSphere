@@ -1,7 +1,7 @@
 import { query } from '../config/db.js';
 
 export async function listProjects(filters = {}) {
-  const { category, search, ownerId } = filters;
+  const { category, search, ownerId, technology } = filters;
   const page = Math.max(1, Number.parseInt(filters.page, 10) || 1);
   const limit = Math.min(50, Math.max(1, Number.parseInt(filters.limit, 10) || 12));
   const offset = (page - 1) * limit;
@@ -11,10 +11,14 @@ export async function listProjects(filters = {}) {
     clauses.push('category = ?');
     params.push(category);
   }
+  if (technology) {
+    clauses.push('EXISTS (SELECT 1 FROM json_each(projects.tech_stack) AS tech WHERE tech.value = ? COLLATE NOCASE)');
+    params.push(technology);
+  }
   if (search) {
-    clauses.push('(title LIKE ? OR tagline LIKE ? OR summary LIKE ? OR overview LIKE ?)');
+    clauses.push('(title LIKE ? OR tagline LIKE ? OR summary LIKE ? OR overview LIKE ? OR tech_stack LIKE ?)');
     const term = `%${search}%`;
-    params.push(term, term, term, term);
+    params.push(term, term, term, term, term);
   }
   if (ownerId) {
     clauses.push('user_id = ?');
@@ -29,6 +33,7 @@ export async function listProjects(filters = {}) {
     newest: 'created_at DESC',
     oldest: 'created_at ASC',
     rating: '(SELECT AVG(rating) FROM project_reviews WHERE project_id = projects.id) DESC, created_at DESC',
+    popular: 'views DESC, likes DESC, created_at DESC',
     title: 'title COLLATE NOCASE ASC',
   }[filters.sort] || 'created_at DESC';
   const [rows, countRows] = await Promise.all([
@@ -38,9 +43,29 @@ export async function listProjects(filters = {}) {
   return { projects: rows, total: Number(countRows[0].total), page, limit };
 }
 
+export async function getProjectFilterOptions() {
+  const categories = await query(
+    "SELECT DISTINCT category FROM projects WHERE status IN ('published', 'featured') ORDER BY category COLLATE NOCASE"
+  );
+  const technologies = await query(
+    `SELECT DISTINCT tech.value AS technology
+     FROM projects, json_each(projects.tech_stack) AS tech
+     WHERE projects.status IN ('published', 'featured') AND tech.type = 'text'
+     ORDER BY tech.value COLLATE NOCASE`
+  );
+  return {
+    categories: categories.map((row) => row.category),
+    technologies: technologies.map((row) => row.technology),
+  };
+}
+
 export async function findProjectById(id) {
   const rows = await query("SELECT * FROM projects WHERE id = ? AND status IN ('published', 'featured')", [id]);
   return rows[0] || null;
+}
+
+export async function incrementProjectViews(id) {
+  return query('UPDATE projects SET views = views + 1 WHERE id = ?', [id]);
 }
 
 export async function listProjectReviews(projectId) {

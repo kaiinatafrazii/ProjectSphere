@@ -603,3 +603,135 @@ export async function changeAdminPassword(req, res) {
     return sendError(res, 500, 'Unable to change your password.');
   }
 }
+
+export async function getAdminAnalytics(_req, res) {
+  try {
+    const [userRows] = await pool.execute(
+      "SELECT strftime('%Y-%m', created_at) AS month, COUNT(*) AS count FROM users WHERE created_at >= date('now', 'start of month', '-11 months') GROUP BY month"
+    );
+    const [submissionRows] = await pool.execute(
+      "SELECT strftime('%Y-%m', created_at) AS month, COUNT(*) AS count FROM projects WHERE created_at >= date('now', 'start of month', '-11 months') GROUP BY month"
+    );
+    const [approvalRows] = await pool.execute(
+      "SELECT strftime('%Y-%m', created_at) AS month, COUNT(*) AS count FROM project_moderation_history WHERE action = 'approved' AND created_at >= date('now', 'start of month', '-11 months') GROUP BY month"
+    );
+    const [categoryRows] = await pool.execute(
+      "SELECT category, COUNT(*) AS count FROM projects WHERE status IN ('published', 'featured') GROUP BY category ORDER BY count DESC, category COLLATE NOCASE ASC"
+    );
+    const [summaryRows] = await pool.execute(
+      `SELECT
+        (SELECT COUNT(*) FROM users) AS totalUsers,
+        (SELECT COUNT(*) FROM projects WHERE status <> 'removed') AS totalProjects,
+        (SELECT COUNT(*) FROM projects WHERE status = 'pending') AS pendingProjects,
+        (SELECT COUNT(*) FROM projects WHERE status IN ('published', 'featured')) AS publishedProjects,
+        (SELECT COUNT(*) FROM project_reviews) AS totalReviews`
+    );
+
+    const countByMonth = (rows) => new Map(rows.map((row) => [row.month, Number(row.count)]));
+    const usersByMonth = countByMonth(userRows);
+    const submissionsByMonth = countByMonth(submissionRows);
+    const approvalsByMonth = countByMonth(approvalRows);
+    const currentMonth = new Date();
+    const monthly = Array.from({ length: 12 }, (_, index) => {
+      const monthDate = new Date(Date.UTC(currentMonth.getUTCFullYear(), currentMonth.getUTCMonth() - 11 + index, 1));
+      const key = `${monthDate.getUTCFullYear()}-${String(monthDate.getUTCMonth() + 1).padStart(2, '0')}`;
+      return {
+        month: key,
+        label: monthDate.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' }),
+        users: usersByMonth.get(key) || 0,
+        submissions: submissionsByMonth.get(key) || 0,
+        approvals: approvalsByMonth.get(key) || 0,
+      };
+    });
+
+    return sendSuccess(res, {
+      summary: summaryRows[0],
+      monthly,
+      categories: categoryRows.map((row) => ({ category: row.category, count: Number(row.count) })),
+    });
+  } catch (error) {
+    console.error('Admin analytics retrieval failed:', error);
+    return sendError(res, 500, 'Unable to load platform analytics.');
+  }
+}
+
+export async function listProjectReports(req, res) {
+  const { page, limit, offset } = pagination(req.query);
+  const status = ['open', 'resolved', 'dismissed'].includes(req.query.status) ? req.query.status : '';
+  const search = typeof req.query.search === 'string' ? req.query.search.trim().slice(0, 100) : '';
+  const clauses = [];
+  const params = [];
+  if (status) {
+    clauses.push('r.status = ?');
+    params.push(status);
+  }
+  if (search) {
+    clauses.push('(p.title LIKE ? OR u.name LIKE ? OR u.email LIKE ? OR r.details LIKE ?)');
+    const term = `%${search}%`;
+    params.push(term, term, term, term);
+  }
+  const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+  try {
+    const [countRows] = await pool.execute(
+      `SELECT COUNT(*) AS total FROM project_reports r
+       JOIN projects p ON p.id = r.project_id
+       JOIN users u ON u.id = r.reporter_id ${where}`,
+      params
+    );
+    const [reports] = await pool.execute(
+      `SELECT r.id, r.project_id AS projectId, p.title AS projectTitle,
+        r.reporter_id AS reporterId, u.name AS reporterName, u.email AS reporterEmail,
+        r.reason, r.details, r.status, r.resolution, r.created_at AS createdAt,
+        r.resolved_at AS resolvedAt
+       FROM project_reports r
+       JOIN projects p ON p.id = r.project_id
+       JOIN users u ON u.id = r.reporter_id ${where}
+       ORDER BY CASE r.status WHEN 'open' THEN 0 ELSE 1 END, r.created_at DESC
+       LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
+    );
+    return sendSuccess(res, { reports, page, limit, total: Number(countRows[0].total) });
+  } catch (error) {
+    console.error('Project report listing failed:', error);
+    return sendError(res, 500, 'Unable to load project reports.');
+  }
+}
+
+export async function resolveProjectReport(req, res) {
+  const status = req.body?.status;
+  const resolution = typeof req.body?.resolution === 'string' ? req.body.resolution.trim() : '';
+  if (!['resolved', 'dismissed'].includes(status)) return sendError(res, 400, 'Choose resolved or dismissed.');
+  if (!resolution || resolution.length > 3000) return sendError(res, 400, 'A resolution note of up to 3000 characters is required.');
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    const [rows] = await connection.execute('SELECT status FROM project_reports WHERE id = ?', [req.params.id]);
+    if (!rows.length) {
+      await connection.rollback();
+      return sendError(res, 404, 'Project report not found.');
+    }
+    if (rows[0].status !== 'open') {
+      await connection.rollback();
+      return sendError(res, 409, 'This project report has already been resolved.');
+    }
+    await connection.execute(
+      'UPDATE project_reports SET status = ?, admin_id = ?, resolution = ?, resolved_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [status, req.user.id, resolution, req.params.id]
+    );
+    await connection.execute(
+      `INSERT INTO admin_audit_events
+       (id, admin_id, action, target_type, target_id, previous_state, new_state, details)
+       VALUES (?, ?, ?, 'report', ?, 'open', ?, ?)`,
+      [uuidv4(), req.user.id, `report_${status}`, req.params.id, status, resolution]
+    );
+    await connection.commit();
+    return sendSuccess(res, { status, message: 'Project report updated.' });
+  } catch (error) {
+    await connection.rollback();
+    console.error('Project report resolution failed:', error);
+    return sendError(res, 500, 'Unable to update project report.');
+  } finally {
+    connection.release();
+  }
+}

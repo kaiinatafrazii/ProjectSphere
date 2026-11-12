@@ -4,8 +4,6 @@ import ProjectCard from '../components/ProjectCard.jsx';
 import { apiRequest } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
-const categories = ['all', 'Productivity', 'AI/ML', 'Developer Tools', 'Research', 'Frontend', 'Backend'];
-
 export default function DiscoverPage() {
   const location = useLocation();
   const { user } = useAuth();
@@ -13,6 +11,8 @@ export default function DiscoverPage() {
   const [savedProjectIds, setSavedProjectIds] = useState([]);
   const [search, setSearch] = useState(() => new URLSearchParams(location.search).get('search') || '');
   const [category, setCategory] = useState('all');
+  const [technology, setTechnology] = useState('');
+  const [filterOptions, setFilterOptions] = useState({ categories: [], technologies: [] });
   const [sort, setSort] = useState('newest');
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -21,12 +21,25 @@ export default function DiscoverPage() {
   const [bookmarkError, setBookmarkError] = useState('');
 
   useEffect(() => {
+    let active = true;
+    apiRequest('/projects/filters')
+      .then((response) => {
+        if (active) setFilterOptions({ categories: response.categories || [], technologies: response.technologies || [] });
+      })
+      .catch(() => {
+        if (active) setFilterOptions({ categories: [], technologies: [] });
+      });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
     async function fetchProjects() {
       setLoading(true);
       setError('');
       try {
         const params = new URLSearchParams();
         if (category && category !== 'all') params.set('category', category);
+        if (technology) params.set('technology', technology);
         if (search.trim()) params.set('search', search.trim());
         params.set('sort', sort);
         params.set('page', String(page));
@@ -56,11 +69,11 @@ export default function DiscoverPage() {
     }
 
     fetchProjects();
-  }, [category, search, sort, page, user]);
+  }, [category, technology, search, sort, page, user]);
 
   useEffect(() => {
     setPage(1);
-  }, [category, search, sort]);
+  }, [category, technology, search, sort]);
 
   useEffect(() => {
     setSearch(new URLSearchParams(location.search).get('search') || '');
@@ -93,7 +106,7 @@ export default function DiscoverPage() {
               aria-label="Search projects"
             />
             <div className="category-filter">
-              {categories.map((item) => (
+              {['all', ...filterOptions.categories].map((item) => (
                 <button
                   key={item}
                   type="button"
@@ -106,10 +119,18 @@ export default function DiscoverPage() {
               ))}
             </div>
             <label className="project-sort-filter">
+              <span>Technology</span>
+              <select value={technology} onChange={(event) => setTechnology(event.target.value)}>
+                <option value="">All technologies</option>
+                {filterOptions.technologies.map((item) => <option value={item} key={item}>{item}</option>)}
+              </select>
+            </label>
+            <label className="project-sort-filter">
               <span>Sort projects</span>
               <select value={sort} onChange={(event) => setSort(event.target.value)}>
                 <option value="newest">Newest</option>
                 <option value="oldest">Oldest</option>
+                <option value="popular">Most viewed</option>
                 <option value="rating">Highest rated</option>
                 <option value="title">Title A–Z</option>
               </select>

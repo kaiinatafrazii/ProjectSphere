@@ -14,12 +14,14 @@ const userNavigation = [
 
 const adminNavigation = [
   { to: '/admin', label: 'Overview', icon: 'grid', end: true },
+  { to: '/admin/analytics', label: 'Analytics', icon: 'chart' },
   { to: '/admin/projects', label: 'All projects', icon: 'layers', end: true },
   { to: '/admin/projects/pending', label: 'Pending reviews', icon: 'clock' },
   { to: '/admin/projects/approved', label: 'Approved projects', icon: 'check' },
   { to: '/admin/projects/rejected', label: 'Rejected projects', icon: 'close' },
   { to: '/admin/users', label: 'User management', icon: 'users' },
   { to: '/admin/reviews', label: 'Ratings & reviews', icon: 'star' },
+  { to: '/admin/reports', label: 'Project reports', icon: 'flag' },
   { to: '/admin/contact-messages', label: 'Contact messages', icon: 'mail' },
   { to: '/admin/moderation-history', label: 'Moderation history', icon: 'history' },
   { to: '/admin/profile', label: 'Admin profile', icon: 'user' },
@@ -34,6 +36,7 @@ const pageTitles = {
   '/dashboard/notifications': 'Notifications',
   '/dashboard/profile': 'My profile',
   '/admin': 'Overview',
+  '/admin/analytics': 'Analytics',
   '/admin/projects': 'All projects',
   '/admin/projects/pending': 'Pending reviews',
   '/admin/projects/approved': 'Approved projects',
@@ -60,6 +63,8 @@ function NavigationIcon({ name }) {
     history: <><path d="M3 12a9 9 0 1 0 2.6-6.4L3 8" /><path d="M3 3v5h5M12 7v5l3 2" /></>,
     mail: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 7 9 6 9-6" /></>,
     bell: <><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" /><path d="M10 21h4" /></>,
+    flag: <><path d="M5 21V5" /><path d="M5 5c7-4 9 4 16 0v11c-7 4-9-4-16 0" /></>,
+    chart: <><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /><path d="m4 8 6-5 6 8 6-4" /></>,
   };
   return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>;
 }

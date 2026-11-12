@@ -15,6 +15,11 @@ export default function ProjectDetailsPage() {
   const [reviewSuccess, setReviewSuccess] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
   const [loadError, setLoadError] = useState('');
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportForm, setReportForm] = useState({ reason: 'inappropriate', details: '' });
+  const [reportError, setReportError] = useState('');
+  const [reportSuccess, setReportSuccess] = useState('');
+  const [submittingReport, setSubmittingReport] = useState(false);
 
   const isTeacherOrAdmin = ['admin', 'teacher', 'researcher'].includes(user?.role);
 
@@ -60,6 +65,26 @@ export default function ProjectDetailsPage() {
       setReviewError(error.message || 'Unable to submit your review.');
     } finally {
       setSubmittingReview(false);
+    }
+  };
+
+  const handleSubmitReport = async (event) => {
+    event.preventDefault();
+    setReportError('');
+    setReportSuccess('');
+    setSubmittingReport(true);
+    try {
+      const response = await apiRequest(`/projects/${encodeURIComponent(id)}/reports`, {
+        method: 'POST',
+        body: JSON.stringify(reportForm),
+      });
+      setReportSuccess(response.message || 'Your report was sent to the moderation team.');
+      setReportForm({ reason: 'inappropriate', details: '' });
+      setReportOpen(false);
+    } catch (submitError) {
+      setReportError(submitError.message || 'Unable to submit your report.');
+    } finally {
+      setSubmittingReport(false);
     }
   };
 
@@ -183,6 +208,39 @@ export default function ProjectDetailsPage() {
                   <Link to="/login" state={{ from: `/projects/${id}` }} className="primary-button full-width">Log in to review</Link>
                 )}
               </form>
+            </div> : null}
+            {!isOwner ? <div className="card-panel report-project-panel">
+              <h3>Report project</h3>
+              {reportError ? <p className="error-text" role="alert">{reportError}</p> : null}
+              {reportSuccess ? <p className="success-text" role="status">{reportSuccess}</p> : null}
+              {user ? (
+                <>
+                  <button type="button" className="secondary-button" aria-expanded={reportOpen} onClick={() => setReportOpen((open) => !open)}>
+                    {reportOpen ? 'Cancel report' : 'Report this project'}
+                  </button>
+                  {reportOpen ? (
+                    <form className="review-form report-form" onSubmit={handleSubmitReport}>
+                      <label>
+                        Reason
+                        <select value={reportForm.reason} onChange={(event) => setReportForm((current) => ({ ...current, reason: event.target.value }))}>
+                          <option value="spam">Spam</option>
+                          <option value="inappropriate">Inappropriate content</option>
+                          <option value="copyright">Copyright concern</option>
+                          <option value="misleading">Misleading information</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </label>
+                      <label>
+                        Details (optional)
+                        <textarea value={reportForm.details} onChange={(event) => setReportForm((current) => ({ ...current, details: event.target.value }))} rows={3} maxLength={3000} />
+                      </label>
+                      <button type="submit" className="danger-button secondary-button" disabled={submittingReport}>
+                        {submittingReport ? 'Sending…' : 'Send report'}
+                      </button>
+                    </form>
+                  ) : null}
+                </>
+              ) : <Link to="/login" state={{ from: `/projects/${id}` }} className="secondary-button">Log in to report</Link>}
             </div> : null}
           </aside>
         </div>

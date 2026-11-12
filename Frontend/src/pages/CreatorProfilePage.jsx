@@ -52,6 +52,12 @@ export default function CreatorProfilePage() {
               {profile.location ? <p>{profile.location}</p> : null}
               {profile.bio ? <p>{profile.bio}</p> : null}
               {profile.skills?.length ? <div className="tech-stack">{profile.skills.map((skill) => <span key={skill}>{skill}</span>)}</div> : null}
+              <div className="profile-external-links">
+                {profile.username ? <span>@{profile.username}</span> : null}
+                {profile.githubUrl ? <a href={profile.githubUrl} target="_blank" rel="noreferrer">GitHub</a> : null}
+                {profile.linkedinUrl ? <a href={profile.linkedinUrl} target="_blank" rel="noreferrer">LinkedIn</a> : null}
+                {profile.websiteUrl ? <a href={profile.websiteUrl} target="_blank" rel="noreferrer">Website</a> : null}
+              </div>
             </div>
           </div>
           <section className="section-block">

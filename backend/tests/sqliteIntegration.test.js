@@ -45,7 +45,7 @@ test('SQLite initializes persistently and supports the account, project, review,
     assert.ok(tables.includes(table), `${table} table exists`);
   }
   assert.equal(db.pragma('foreign_keys', { simple: true }), 1);
-  assert.equal(db.pragma('user_version', { simple: true }), 4);
+  assert.equal(db.pragma('user_version', { simple: true }), 5);
   assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_contact_messages_read_created'").get());
   assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_projects_status_created'").get());
 
@@ -132,13 +132,20 @@ test('SQLite initializes persistently and supports the account, project, review,
       location: 'Remote',
       skills: ['SQLite', 'React'],
       avatarUrl: profilePhoto,
+      username: 'project_owner',
+      githubUrl: 'https://github.com/project-owner',
+      linkedinUrl: 'https://www.linkedin.com/in/project-owner',
+      websiteUrl: 'https://project-owner.example.test',
       role: 'admin',
     },
   });
   assert.equal(profileUpdate.status, 200);
   assert.equal(profileUpdate.body.user.avatarUrl, profilePhoto);
+  assert.equal(profileUpdate.body.user.username, 'project_owner');
+  assert.equal(profileUpdate.body.user.githubUrl, 'https://github.com/project-owner');
   assert.equal(profileUpdate.body.user.role, 'student');
   assert.equal(db.prepare('SELECT avatar_url FROM users WHERE id = ?').get(owner.user.id).avatar_url, profilePhoto);
+  assert.equal(db.prepare('SELECT username FROM users WHERE id = ?').get(owner.user.id).username, 'project_owner');
   const restoredProfile = await request('/auth/me', { cookie: owner.cookie });
   assert.equal(restoredProfile.body.user.avatarUrl, profilePhoto);
   const profileUpdateWithoutPhoto = await request('/users/me', {
@@ -283,6 +290,11 @@ test('SQLite initializes persistently and supports the account, project, review,
   const adminOverview = await request('/admin/overview', { cookie: adminLogin.cookie });
   assert.equal(adminOverview.status, 200);
   assert.equal(adminOverview.body.stats.averageRating, null);
+    const analytics = await request('/admin/analytics', { cookie: adminLogin.cookie });
+    assert.equal(analytics.status, 200);
+    assert.equal(analytics.body.monthly.length, 12);
+    assert.equal(analytics.body.summary.totalUsers, 3);
+    assert.equal((await request('/admin/analytics', { cookie: reviewer.cookie })).status, 403);
   const adminUserList = await request('/admin/users?role=student&sort=oldest', { cookie: adminLogin.cookie });
   assert.equal(adminUserList.status, 200);
   assert.ok(adminUserList.body.users.some((user) => user.id === owner.user.id));
@@ -368,6 +380,8 @@ test('SQLite initializes persistently and supports the account, project, review,
   assert.ok(discovered.body.projects.some((project) => project.id === projectId));
   const publicProject = await request(`/projects/${projectId}`);
   assert.equal(publicProject.status, 200);
+  assert.equal(db.prepare('SELECT views FROM projects WHERE id = ?').get(projectId).views, 1);
+  assert.equal(db.prepare('SELECT updated_at FROM projects WHERE id = ?').get(projectId).updated_at, publicProject.body.project.createdAt === undefined ? db.prepare('SELECT updated_at FROM projects WHERE id = ?').get(projectId).updated_at : db.prepare('SELECT updated_at FROM projects WHERE id = ?').get(projectId).updated_at);
   assert.equal(publicProject.body.project.owner.name, 'Updated Project Owner');
   assert.equal(Array.isArray(publicProject.body.project.ownerProjects), true);
   assert.equal(Object.hasOwn(publicProject.body.project, 'sourceCode'), false);
@@ -379,9 +393,49 @@ test('SQLite initializes persistently and supports the account, project, review,
   const publicCreator = await request(`/users/${owner.user.id}`);
   assert.equal(publicCreator.status, 200);
   assert.equal(publicCreator.body.user.name, 'Updated Project Owner');
+  assert.equal(publicCreator.body.user.websiteUrl, 'https://project-owner.example.test');
   assert.equal(Object.hasOwn(publicCreator.body.user, 'email'), false);
   const publicCreatorProjects = await request(`/projects?ownerId=${encodeURIComponent(owner.user.id)}`);
   assert.ok(publicCreatorProjects.body.projects.some((project) => project.id === projectId));
+  const projectFilters = await request('/projects/filters');
+  assert.ok(projectFilters.body.categories.includes('Developer Tools'));
+  assert.ok(projectFilters.body.technologies.includes('SQLite'));
+  const technologyFiltered = await request('/projects?technology=SQLite');
+  assert.ok(technologyFiltered.body.projects.some((project) => project.id === projectId));
+  const noTechnologyResults = await request('/projects?technology=UnknownTechnology');
+  assert.equal(noTechnologyResults.body.total, 0);
+  const popularProjects = await request('/projects?sort=popular');
+  assert.ok(popularProjects.body.projects.some((project) => project.id === projectId));
+
+  const selfReport = await request(`/projects/${projectId}/reports`, {
+    method: 'POST',
+    cookie: owner.cookie,
+    body: { reason: 'other', details: 'Owner cannot report this.' },
+  });
+  assert.equal(selfReport.status, 403);
+  const reportSubmission = await request(`/projects/${projectId}/reports`, {
+    method: 'POST',
+    cookie: reviewer.cookie,
+    body: { reason: 'misleading', details: 'The demo link does not match the project description.' },
+  });
+  assert.equal(reportSubmission.status, 201);
+  assert.equal((await request(`/projects/${projectId}/reports`, {
+    method: 'POST',
+    cookie: reviewer.cookie,
+    body: { reason: 'spam', details: '' },
+  })).status, 409);
+  assert.equal((await request('/admin/reports?status=open', { cookie: reviewer.cookie })).status, 403);
+  const reportQueue = await request('/admin/reports?status=open', { cookie: adminLogin.cookie });
+  assert.equal(reportQueue.status, 200);
+  assert.equal(reportQueue.body.reports.length, 1);
+  const reportId = reportQueue.body.reports[0].id;
+  const reportResolution = await request(`/admin/reports/${reportId}`, {
+    method: 'PATCH',
+    cookie: adminLogin.cookie,
+    body: { status: 'dismissed', resolution: 'Reviewed the report; no policy violation found.' },
+  });
+  assert.equal(reportResolution.status, 200);
+  assert.equal(db.prepare("SELECT COUNT(*) AS count FROM admin_audit_events WHERE target_type = 'report' AND target_id = ?").get(reportId).count, 1);
 
   const firstReview = await request(`/projects/${projectId}/reviews`, {
     method: 'POST',
@@ -567,7 +621,7 @@ test('SQLite upgrades an existing schema version without resetting its records',
     const sourceTable = db.prepare(\"SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'project_source_code'\").get();
     const accountStatusColumn = db.pragma('table_info(users)').some((column) => column.name === 'account_status');
     const notificationsTable = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'user_notifications'").get();
-    if (db.pragma('user_version', { simple: true }) !== 4 || user?.name !== 'Legacy Admin' || !contactReadColumn || !sourceTable || !accountStatusColumn || !notificationsTable) process.exitCode = 1;
+    if (db.pragma('user_version', { simple: true }) !== 5 || user?.name !== 'Legacy Admin' || !contactReadColumn || !sourceTable || !accountStatusColumn || !notificationsTable) process.exitCode = 1;
     db.close();
   `], {
     cwd: backendDirectory,

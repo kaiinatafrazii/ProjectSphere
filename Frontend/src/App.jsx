@@ -20,6 +20,8 @@ import DashboardReviewsPage from './pages/DashboardReviewsPage.jsx';
 import AdminLoginPage from './pages/AdminLoginPage.jsx';
 import AdminContactMessagesPage from './pages/AdminContactMessagesPage.jsx';
 import AdminProfilePage from './pages/AdminProfilePage.jsx';
+import AdminReportsPage from './pages/AdminReportsPage.jsx';
+import AdminAnalyticsPage from './pages/AdminAnalyticsPage.jsx';
 import CreatorProfilePage from './pages/CreatorProfilePage.jsx';
 import NotificationsPage from './pages/NotificationsPage.jsx';
 
@@ -181,6 +183,8 @@ export default function App() {
           <Route path="projects/rejected" element={<AdminPage />} />
           <Route path="users" element={<AdminPage />} />
           <Route path="reviews" element={<AdminPage />} />
+                    <Route path="reports" element={<AdminReportsPage />} />
+                    <Route path="analytics" element={<AdminAnalyticsPage />} />
           <Route path="moderation-history" element={<AdminPage />} />
           <Route path="contact-messages" element={<AdminContactMessagesPage />} />
           <Route path="profile" element={<AdminProfilePage />} />

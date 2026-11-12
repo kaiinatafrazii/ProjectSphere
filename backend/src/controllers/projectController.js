@@ -1,6 +1,16 @@
 import { addReviewService, getProjectByIdService, getProjects, publishProjectService } from '../services/projectService.js';
 import { sendError, sendSuccess } from '../utils/response.js';
 import { validateProjectInput } from '../utils/projectValidation.js';
+import { getProjectFilterOptions } from '../repositories/projectRepository.js';
+
+export async function getProjectFiltersHandler(_req, res) {
+  try {
+    return sendSuccess(res, await getProjectFilterOptions());
+  } catch (error) {
+    console.error('Project filter options failed:', error);
+    return sendError(res, 500, 'Unable to load project filters.');
+  }
+}
 
 export async function getProjectsHandler(req, res) {
   try {
@@ -8,6 +18,7 @@ export async function getProjectsHandler(req, res) {
       category: req.query.category,
       search: req.query.search,
       ownerId: req.query.ownerId,
+      technology: req.query.technology,
       excludeId: req.query.excludeId,
       page: req.query.page,
       limit: req.query.limit,
