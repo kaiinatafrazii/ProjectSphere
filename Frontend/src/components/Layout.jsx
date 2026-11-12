@@ -112,15 +112,16 @@ export default function Layout() {
       {isAuthRoute ? (
         <header className="topbar auth-topbar">
           <div className="container auth-topbar-content">
-            <Link to="/" className="header-back-home">← Back to Home</Link>
+            <Link to="/" className="brand auth-brand" aria-label="ProjectSphere home">
+              <img className="brand-mark-image" src="/images/projectsphere-logo.svg" alt="ProjectSphere" />
+            </Link>
           </div>
         </header>
       ) : (
         <header ref={headerRef} className={scrolled ? 'topbar is-scrolled' : 'topbar'}>
           <div className="container nav-wrap">
             <NavLink to="/" end className="brand" aria-label="ProjectSphere home">
-              <img className="brand-mark-image" src="/favicon.svg" alt="" />
-              <span>ProjectSphere</span>
+              <img className="brand-mark-image" src="/images/projectsphere-logo.svg" alt="ProjectSphere" />
             </NavLink>
 
             <button
@@ -186,8 +187,7 @@ export default function Layout() {
         <footer className="site-footer">
           <div className="container footer-content">
             <NavLink to="/" className="brand" aria-label="ProjectSphere home">
-              <img className="brand-mark-image" src="/favicon.svg" alt="" />
-              <span>ProjectSphere</span>
+              <img className="brand-mark-image" src="/images/projectsphere-logo.svg" alt="ProjectSphere" />
             </NavLink>
             <p>Discover, publish, and improve technical work together.</p>
             <nav aria-label="Footer navigation">

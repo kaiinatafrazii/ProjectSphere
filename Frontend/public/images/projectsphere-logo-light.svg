@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 450" role="img" aria-labelledby="logo-title">
+  <title id="logo-title">ProjectSphere</title>
+  <defs>
+    <linearGradient id="mark-blue" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0A83D2"/><stop offset="0.52" stop-color="#07529A"/><stop offset="1" stop-color="#102D59"/></linearGradient>
+    <linearGradient id="orbit-orange" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#F79613"/><stop offset="1" stop-color="#F36C12"/></linearGradient>
+  </defs>
+  <path d="M145 366V176c0-39 25-64 63-64h128c62 0 99 37 99 91 0 52-38 89-100 89h-89v74z" fill="url(#mark-blue)"/>
+  <path d="M223 218c0-30 20-50 50-50h7c31 0 54 22 54 50s-23 50-54 50h-7c-30 0-50-20-50-50z" fill="#fff"/>
+  <path d="m265 197-20 21 20 21m28-42 20 21-20 21m17-44-22 47" fill="none" stroke="#102D59" stroke-linecap="round" stroke-linejoin="round" stroke-width="10"/>
+  <ellipse cx="253" cy="246" rx="220" ry="73" transform="rotate(-29 253 246)" fill="none" stroke="url(#orbit-orange)" stroke-width="19"/>
+  <path d="M356 104c23-14 49-21 77-20" fill="none" stroke="url(#orbit-orange)" stroke-linecap="round" stroke-width="10"/>
+  <circle cx="437" cy="93" r="47" fill="url(#orbit-orange)"/>
+  <text x="500" y="270" fill="#fff" font-family="Arial,sans-serif" font-size="160" font-weight="700" textLength="500" lengthAdjust="spacingAndGlyphs">Project</text>
+  <text x="1020" y="270" fill="#F47712" font-family="Arial,sans-serif" font-size="160" font-weight="700" textLength="500" lengthAdjust="spacingAndGlyphs">Sphere</text>
+  <text x="518" y="365" fill="#D6DDE6" font-family="Arial,sans-serif" font-size="48" letter-spacing="9">Discover</text>
+  <circle cx="796" cy="350" r="9" fill="#F47712"/>
+  <text x="830" y="365" fill="#D6DDE6" font-family="Arial,sans-serif" font-size="48" letter-spacing="9">Share</text>
+  <circle cx="1057" cy="350" r="9" fill="#F47712"/>
+  <text x="1090" y="365" fill="#D6DDE6" font-family="Arial,sans-serif" font-size="48" letter-spacing="8">Build Together</text>
+</svg>

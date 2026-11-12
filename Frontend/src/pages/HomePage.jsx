@@ -131,7 +131,6 @@ export default function HomePage() {
                 type="search"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search projects by name or idea"
               />
               <button type="submit" className="secondary-button">Search</button>
             </form>
@@ -161,7 +160,7 @@ export default function HomePage() {
               <div className="empty-state" role="alert">{projectError}</div>
             ) : (
               <div className="featured-placeholder">
-                <span className="featured-placeholder-mark" aria-hidden="true">P</span>
+                <img className="featured-placeholder-mark" src="/favicon.svg" alt="ProjectSphere" />
                 <p>Projects made by people who build.</p>
               </div>
             )}

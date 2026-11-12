@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { apiRequest, downloadRequest } from '../services/api.js';
+import { optimizedImageUrl } from '../utils/imageUrl.js';
 
 export default function AdminPage() {
   const { pathname } = useLocation();
@@ -240,7 +241,7 @@ export default function AdminPage() {
               <div className="admin-record-list">
                 {rows.map((project) => (
                   <article className="admin-record" key={project.id}>
-                    {project.screenshotUrl ? <img className="admin-project-image" src={project.screenshotUrl} alt={`${project.title} project preview`} loading="lazy" /> : null}
+                    {project.screenshotUrl ? <img className="admin-project-image" src={optimizedImageUrl(project.screenshotUrl, 720)} alt={`${project.title} project preview`} loading="lazy" decoding="async" /> : null}
                     <div className="admin-record-main">
                       <div className="dashboard-project-title"><h3>{project.title}</h3><span className={`status-badge status-${project.status}`}>{project.status.replaceAll('_', ' ')}</span></div>
                       <p>{project.tagline}</p>
@@ -269,7 +270,7 @@ export default function AdminPage() {
                               <p>Submitted {new Date(projectDetails.createdAt).toLocaleString()} · Status: {projectDetails.status} · Rating: {projectDetails.ratingAverage ?? '—'} ({projectDetails.reviewCount} reviews)</p>
                               <p><strong>Summary:</strong> {projectDetails.summary}</p>
                               <p>{projectDetails.overview}</p>
-                              {projectDetails.screenshotUrl ? <img className="admin-project-image" src={projectDetails.screenshotUrl} alt={`${projectDetails.title} screenshot`} loading="lazy" /> : <p>No screenshot submitted.</p>}
+                              {projectDetails.screenshotUrl ? <img className="admin-project-image" src={optimizedImageUrl(projectDetails.screenshotUrl, 720)} alt={`${projectDetails.title} screenshot`} loading="lazy" decoding="async" /> : <p>No screenshot submitted.</p>}
                               <div className="project-links">
                                 {projectDetails.repoUrl ? <a href={projectDetails.repoUrl} target="_blank" rel="noreferrer">Public repository</a> : <span>No public repository link</span>}
                                 {projectDetails.liveUrl ? <a href={projectDetails.liveUrl} target="_blank" rel="noreferrer">Public live demo</a> : <span>No public live-demo link</span>}

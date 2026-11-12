@@ -1,12 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title description">
   <title id="title">ProjectSphere</title>
   <desc id="description">Discover, share, and explore developer projects.</desc>
-  <rect width="1200" height="630" fill="#f5f3ef"/>
-  <rect x="76" y="76" width="72" height="72" rx="20" fill="#145c5a"/>
-  <text x="112" y="126" fill="#fff" font-family="Arial, sans-serif" font-size="46" font-weight="700" text-anchor="middle">P</text>
-  <text x="176" y="124" fill="#171c22" font-family="Arial, sans-serif" font-size="34" font-weight="700">ProjectSphere</text>
-  <text x="76" y="285" fill="#171c22" font-family="Arial, sans-serif" font-size="76" font-weight="700" letter-spacing="-3">Good work deserves</text>
-  <text x="76" y="378" fill="#171c22" font-family="Arial, sans-serif" font-size="76" font-weight="700" letter-spacing="-3">to be discovered.</text>
-  <text x="80" y="455" fill="#5f6974" font-family="Arial, sans-serif" font-size="30">A home for developers to share, explore, and learn.</text>
-  <rect x="80" y="510" width="240" height="8" rx="4" fill="#145c5a"/>
+  <rect width="1200" height="630" fill="#F5F2EB"/>
+  <image href="/images/projectsphere-logo.svg" x="76" y="42" width="500" height="141"/>
+  <path d="M76 230h1048" stroke="#E4E2DC" stroke-width="2"/>
+  <text x="76" y="340" fill="#172B45" font-family="Georgia,serif" font-size="72" font-weight="600">Discover work built</text>
+  <text x="76" y="425" fill="#172B45" font-family="Georgia,serif" font-size="72" font-weight="600">by the community.</text>
+  <text x="80" y="500" fill="#737A83" font-family="Trebuchet MS, sans-serif" font-size="30">Explore projects. Share what you make.</text>
+  <rect x="80" y="548" width="190" height="8" rx="4" fill="#E79545"/>
 </svg>

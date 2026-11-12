@@ -144,8 +144,7 @@ export default function DashboardLayout({ admin = false }) {
       >
         <div className="dashboard-brand-row">
           <Link to="/" className="dashboard-brand" aria-label="ProjectSphere public homepage">
-            <img src="/favicon.svg" alt="" />
-            <span>ProjectSphere</span>
+            <img src="/images/projectsphere-logo-light.svg" alt="ProjectSphere" />
           </Link>
           <button ref={closeButtonRef} type="button" className="dashboard-icon-button dashboard-mobile-close" aria-label="Close navigation" onClick={() => setDrawerOpen(false)}>×</button>
         </div>

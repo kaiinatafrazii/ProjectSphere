@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { apiRequest } from '../services/api.js';
+import { optimizedImageUrl } from '../utils/imageUrl.js';
 
 const emptyStats = {
   totalProjects: 0,
@@ -144,7 +145,7 @@ export default function DashboardPage() {
                 <div className="dashboard-project-list">
                   {visibleProjects.map((project) => (
                     <article className="dashboard-project" key={project.id}>
-                      {project.screenshotUrl ? <img src={project.screenshotUrl} alt="" loading="lazy" /> : <div className="dashboard-project-placeholder" aria-hidden="true">PS</div>}
+                      {project.screenshotUrl ? <img src={optimizedImageUrl(project.screenshotUrl, 480)} alt={`${project.title} project preview`} loading="lazy" decoding="async" /> : <div className="dashboard-project-placeholder" aria-hidden="true">PS</div>}
                       <div className="dashboard-project-info">
                         <div className="dashboard-project-title">
                           <h3>{project.title}</h3>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import ProjectCard from '../components/ProjectCard.jsx';
 import { apiRequest } from '../services/api.js';
+import { optimizedImageUrl } from '../utils/imageUrl.js';
 
 export default function CreatorProfilePage() {
   const { id } = useParams();
@@ -44,7 +45,7 @@ export default function CreatorProfilePage() {
       <section className="section-block">
         <div className="container">
           <div className="profile-card public-creator-profile">
-            <img src={profile.avatarUrl || '/favicon.svg'} alt="" />
+            <img src={optimizedImageUrl(profile.avatarUrl || '/favicon.svg', 320)} alt={`${profile.name}'s profile`} decoding="async" />
             <div>
               <span className="eyebrow">ProjectSphere creator</span>
               <h1>{profile.name}</h1>

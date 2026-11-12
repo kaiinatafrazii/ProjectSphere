@@ -10,7 +10,7 @@ export default function PublishPage() {
     title: '',
     tagline: '',
     category: 'Productivity',
-    techStack: 'React, Node.js, MySQL',
+    techStack: '',
     summary: '',
     overview: '',
     repoUrl: '',
@@ -135,7 +135,7 @@ export default function PublishPage() {
             <div className="form-grid two-up">
               <label>
                 Project title
-                <input name="title" value={form.title} onChange={handleChange} maxLength={150} placeholder="ProjectSphere" required />
+                <input name="title" value={form.title} onChange={handleChange} maxLength={150} required />
               </label>
               <label>
                 Category
@@ -152,38 +152,38 @@ export default function PublishPage() {
 
             <label>
               Tagline
-              <input name="tagline" value={form.tagline} onChange={handleChange} maxLength={220} placeholder="A premium project discovery platform for developers." required />
+              <input name="tagline" value={form.tagline} onChange={handleChange} maxLength={220} required />
             </label>
 
             <label>
               Tech stack
-              <input name="techStack" value={form.techStack} onChange={handleChange} placeholder="React, Node.js, MySQL" />
+              <input name="techStack" value={form.techStack} onChange={handleChange} />
             </label>
 
             <label>
               Summary
-              <textarea name="summary" value={form.summary} onChange={handleChange} rows={3} maxLength={5000} placeholder="Short summary of the product and its value." required />
+              <textarea name="summary" value={form.summary} onChange={handleChange} rows={3} maxLength={5000} required />
             </label>
 
             <label>
               Overview
-              <textarea name="overview" value={form.overview} onChange={handleChange} rows={5} maxLength={20000} placeholder="Describe the problem, solution, and product story." required />
+              <textarea name="overview" value={form.overview} onChange={handleChange} rows={5} maxLength={20000} required />
             </label>
 
             <div className="form-grid two-up">
               <label>
                 Public repository URL (optional)
-                <input type="url" name="repoUrl" value={form.repoUrl} onChange={handleChange} placeholder="https://github.com/your-public-repository" />
+                <input type="url" name="repoUrl" value={form.repoUrl} onChange={handleChange} />
               </label>
               <label>
                 Public live-demo URL (optional)
-                <input type="url" name="liveUrl" value={form.liveUrl} onChange={handleChange} placeholder="https://your-project.app" />
+                <input type="url" name="liveUrl" value={form.liveUrl} onChange={handleChange} />
               </label>
             </div>
 
             <label>
               Screenshot image URL
-              <input type="url" name="screenshotUrl" value={form.screenshotUrl} onChange={handleChange} placeholder="https://images.unsplash.com/..." />
+              <input type="url" name="screenshotUrl" value={form.screenshotUrl} onChange={handleChange} />
             </label>
 
             <section className="private-source-upload" aria-labelledby="private-source-heading">

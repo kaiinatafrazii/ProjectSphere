@@ -50,7 +50,7 @@ export default function AdminLoginPage() {
   return (
     <div className="page-shell auth-page">
       <div className="auth-card">
-        <Link to="/" className="dashboard-brand"><img src="/favicon.svg" alt="" /><span>ProjectSphere</span></Link>
+        <Link to="/" className="dashboard-brand"><img src="/images/projectsphere-logo.svg" alt="ProjectSphere" /></Link>
         <span className="eyebrow">Administrator access</span>
         <h1>Log in to administration</h1>
         <form onSubmit={handleSubmit} className="stacked-form compact-form">
