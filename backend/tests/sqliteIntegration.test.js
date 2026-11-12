@@ -378,10 +378,11 @@ test('SQLite initializes persistently and supports the account, project, review,
   assert.equal((await request('/users/me/notifications?unread=true', { cookie: owner.cookie })).body.unreadCount, 0);
   const discovered = await request('/projects');
   assert.ok(discovered.body.projects.some((project) => project.id === projectId));
+  const updatedAtBeforeView = db.prepare('SELECT updated_at FROM projects WHERE id = ?').get(projectId).updated_at;
   const publicProject = await request(`/projects/${projectId}`);
   assert.equal(publicProject.status, 200);
   assert.equal(db.prepare('SELECT views FROM projects WHERE id = ?').get(projectId).views, 1);
-  assert.equal(db.prepare('SELECT updated_at FROM projects WHERE id = ?').get(projectId).updated_at, publicProject.body.project.createdAt === undefined ? db.prepare('SELECT updated_at FROM projects WHERE id = ?').get(projectId).updated_at : db.prepare('SELECT updated_at FROM projects WHERE id = ?').get(projectId).updated_at);
+  assert.equal(db.prepare('SELECT updated_at FROM projects WHERE id = ?').get(projectId).updated_at, updatedAtBeforeView);
   assert.equal(publicProject.body.project.owner.name, 'Updated Project Owner');
   assert.equal(Array.isArray(publicProject.body.project.ownerProjects), true);
   assert.equal(Object.hasOwn(publicProject.body.project, 'sourceCode'), false);
