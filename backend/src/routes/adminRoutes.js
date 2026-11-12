@@ -4,6 +4,7 @@ import {
   getAdminProfile,
   getAdminProjectDetails,
   getAdminUserDetails,
+  changeUserAccountStatus,
   changeAdminPassword,
   listAdminContactMessages,
   listAdminProjects,
@@ -27,6 +28,7 @@ router.get('/reviews', listAdminReviews);
 router.post('/projects/:id/moderate', moderateProject);
 router.get('/history', listModerationHistory);
 router.get('/users', listAdminUsers);
+router.patch('/users/:id/status', changeUserAccountStatus);
 router.get('/users/:id', getAdminUserDetails);
 router.get('/contact-messages', listAdminContactMessages);
 router.patch('/contact-messages/:id', markContactMessageRead);

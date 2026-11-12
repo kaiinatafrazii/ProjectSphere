@@ -51,7 +51,7 @@ export async function register(req, res) {
       email: normalizedEmail,
       passwordHash,
       bio: typeof bio === 'string' ? bio.slice(0, 1000) : '',
-      avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=500&q=80',
+      avatarUrl: null,
       location: typeof location === 'string' ? location.slice(0, 100) : '',
       skills: safeSkills,
       role: 'student',
@@ -65,7 +65,7 @@ export async function register(req, res) {
       location: typeof location === 'string' ? location.slice(0, 100) : '',
       skills: safeSkills,
       role: 'student',
-      avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=500&q=80',
+      avatarUrl: null,
       createdAt: new Date().toISOString(),
       savedProjects: [],
     };
@@ -98,6 +98,9 @@ export async function login(req, res) {
     const validPassword = await verifyPassword(password, user.password_hash || user.passwordHash);
     if (!validPassword) {
       return sendError(res, 401, 'Invalid credentials.');
+    }
+    if (user.account_status !== 'active') {
+      return sendError(res, 403, 'This account is currently suspended. Contact the ProjectSphere team for assistance.');
     }
 
     const safeUser = buildUserView(user);

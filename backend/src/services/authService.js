@@ -53,7 +53,11 @@ export async function createSession(userId) {
 export async function isSessionActive(sessionId, userId) {
   if (!sessionId) return false;
   const rows = await query(
-    'SELECT * FROM auth_sessions WHERE id = ? AND revoked_at IS NULL AND datetime(expires_at) > CURRENT_TIMESTAMP',
+    `SELECT s.* FROM auth_sessions s
+     JOIN users u ON u.id = s.user_id
+     WHERE s.id = ? AND s.revoked_at IS NULL
+       AND datetime(s.expires_at) > CURRENT_TIMESTAMP
+       AND u.account_status = 'active'`,
     [sessionId]
   );
   const session = rows[0];
@@ -113,6 +117,11 @@ export function buildUserView(user) {
     location: user.location || '',
     skills: typeof user.skills === 'string' ? JSON.parse(user.skills) : user.skills || [],
     role: user.role || 'student',
+    accountStatus: user.account_status || user.accountStatus || 'active',
+    username: user.username || null,
+    githubUrl: user.github_url || user.githubUrl || null,
+    linkedinUrl: user.linkedin_url || user.linkedinUrl || null,
+    websiteUrl: user.website_url || user.websiteUrl || null,
     avatarUrl: user.avatar_url || user.avatarUrl || null,
     savedProjects: user.savedProjects || [],
     createdAt: user.createdAt,

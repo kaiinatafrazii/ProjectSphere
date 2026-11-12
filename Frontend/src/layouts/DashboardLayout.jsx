@@ -8,6 +8,7 @@ const userNavigation = [
   { to: '/dashboard/projects/new', label: 'Submit a project', icon: 'plus' },
   { to: '/dashboard/bookmarks', label: 'Bookmarks', icon: 'bookmark' },
   { to: '/dashboard/reviews', label: 'Ratings & reviews', icon: 'star' },
+  { to: '/dashboard/notifications', label: 'Notifications', icon: 'bell' },
   { to: '/dashboard/profile', label: 'My profile', icon: 'user' },
 ];
 
@@ -30,6 +31,7 @@ const pageTitles = {
   '/dashboard/projects/new': 'Submit a project',
   '/dashboard/bookmarks': 'Bookmarks',
   '/dashboard/reviews': 'Ratings & reviews',
+  '/dashboard/notifications': 'Notifications',
   '/dashboard/profile': 'My profile',
   '/admin': 'Overview',
   '/admin/projects': 'All projects',
@@ -57,6 +59,7 @@ function NavigationIcon({ name }) {
     users: <><circle cx="9" cy="8" r="3" /><path d="M3 20c.5-3.2 2.5-5 6-5s5.5 1.8 6 5M16 5.5a3 3 0 0 1 0 5.8M17 15c2.4.4 3.7 2 4 5" /></>,
     history: <><path d="M3 12a9 9 0 1 0 2.6-6.4L3 8" /><path d="M3 3v5h5M12 7v5l3 2" /></>,
     mail: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 7 9 6 9-6" /></>,
+    bell: <><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" /><path d="M10 21h4" /></>,
   };
   return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>;
 }

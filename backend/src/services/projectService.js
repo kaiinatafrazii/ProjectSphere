@@ -1,6 +1,7 @@
 import { createProject, createReview, findProjectById, listProjectReviews, listProjects } from '../repositories/projectRepository.js';
 import { findUserById } from '../repositories/userRepository.js';
 import { generateId } from './authService.js';
+import { createUserNotification } from './notificationService.js';
 
 function parseTechStack(value) {
   if (Array.isArray(value)) return value;
@@ -131,8 +132,21 @@ export async function addReviewService({ projectId, userId, rating, comment }) {
     throw Object.assign(new Error('Project owners cannot review their own projects.'), { statusCode: 403 });
   }
 
+  const previousReviews = await listProjectReviews(projectId);
+  const isFirstReviewFromUser = !previousReviews.some((review) => (review.user_id || review.userId) === userId);
   const id = generateId();
   await createReview({ id, projectId, userId, rating, comment });
+  if (isFirstReviewFromUser) {
+    const reviewer = await findUserById(userId);
+    await createUserNotification({
+      userId: project.user_id || project.userId,
+      type: 'new_review',
+      title: 'New review on your project',
+      message: `${reviewer?.name || 'A community member'} reviewed “${project.title}”.`,
+      entityType: 'project',
+      entityId: projectId,
+    });
+  }
   const savedReview = (await listProjectReviews(projectId)).find(
     (review) => (review.user_id || review.userId) === userId
   );

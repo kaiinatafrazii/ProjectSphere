@@ -3,6 +3,7 @@ import { pool } from '../config/db.js';
 import { sendError, sendSuccess } from '../utils/response.js';
 import { findUserById } from '../repositories/userRepository.js';
 import { buildUserView, hashPassword, verifyPassword } from '../services/authService.js';
+import { createUserNotification } from '../services/notificationService.js';
 
 const moderationActions = {
   approve: { action: 'approved', status: 'published' },
@@ -229,7 +230,7 @@ export async function moderateProject(req, res) {
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
-    const [rows] = await connection.execute('SELECT status FROM projects WHERE id = ?', [req.params.id]);
+    const [rows] = await connection.execute('SELECT status, user_id AS ownerId, title FROM projects WHERE id = ?', [req.params.id]);
     if (!rows.length) {
       await connection.rollback();
       return sendError(res, 404, 'Project not found.');
@@ -247,6 +248,28 @@ export async function moderateProject(req, res) {
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [uuidv4(), req.params.id, req.user.id, decision.action, previousStatus, decision.status, feedback || null]
     );
+    const notificationType = decision.action === 'approved'
+      ? 'project_approved'
+      : decision.action === 'rejected'
+        ? 'project_rejected'
+        : decision.action === 'changes_requested'
+          ? 'changes_requested'
+          : 'project_removed';
+    const notificationTitle = decision.action === 'approved'
+      ? 'Your project was approved'
+      : decision.action === 'rejected'
+        ? 'Your project was rejected'
+        : decision.action === 'changes_requested'
+          ? 'Changes requested for your project'
+          : 'Your project was removed';
+    await createUserNotification({
+      userId: rows[0].ownerId,
+      type: notificationType,
+      title: notificationTitle,
+      message: feedback || `“${rows[0].title}” was ${decision.action}.`,
+      entityType: 'project',
+      entityId: req.params.id,
+    }, connection);
     await connection.commit();
     return sendSuccess(res, { message: 'Moderation decision saved.', status: decision.status });
   } catch (error) {
@@ -314,7 +337,8 @@ export async function listAdminUsers(req, res) {
   try {
     const [countRows] = await pool.execute(`SELECT COUNT(*) AS total FROM users u ${where}`, params);
     const [users] = await pool.execute(
-      `SELECT u.id, u.name, u.email, u.role, u.created_at AS createdAt,
+      `SELECT u.id, u.name, u.email, u.role, u.account_status AS accountStatus,
+        u.created_at AS createdAt,
         COUNT(DISTINCT p.id) AS projectCount,
         COUNT(DISTINCT CASE WHEN p.status IN ('published', 'featured') THEN p.id END) AS approvedProjectCount,
         COUNT(DISTINCT CASE WHEN p.status = 'pending' THEN p.id END) AS pendingProjectCount,
@@ -392,6 +416,75 @@ export async function getAdminUserDetails(req, res) {
     return sendError(res, 500, 'Unable to load user details.');
   }
 }
+
+export async function changeUserAccountStatus(req, res) {
+    const accountStatus = req.body?.accountStatus;
+    if (!['active', 'suspended'].includes(accountStatus)) {
+      return sendError(res, 400, 'Choose active or suspended as the account status.');
+    }
+    if (accountStatus === 'suspended' && req.params.id === req.user.id) {
+      return sendError(res, 409, 'You cannot suspend your own administrator account.');
+    }
+
+    const connection = await pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      const [rows] = await connection.execute(
+        'SELECT id, role, account_status AS accountStatus FROM users WHERE id = ?',
+        [req.params.id]
+      );
+      if (!rows.length) {
+        await connection.rollback();
+        return sendError(res, 404, 'User not found.');
+      }
+      const target = rows[0];
+      const previousStatus = target.accountStatus;
+      if (previousStatus === accountStatus) {
+        await connection.rollback();
+        return sendSuccess(res, { accountStatus, message: 'Account status is unchanged.' });
+      }
+
+      if (target.role === 'admin' && accountStatus === 'suspended') {
+        const [adminRows] = await connection.execute(
+          "SELECT COUNT(*) AS activeAdmins FROM users WHERE role = 'admin' AND account_status = 'active'"
+        );
+        if (Number(adminRows[0].activeAdmins) <= 1) {
+          await connection.rollback();
+          return sendError(res, 409, 'The last active administrator cannot be suspended.');
+        }
+      }
+
+      await connection.execute('UPDATE users SET account_status = ? WHERE id = ?', [accountStatus, req.params.id]);
+      if (accountStatus === 'suspended') {
+        await connection.execute(
+          'UPDATE auth_sessions SET revoked_at = CURRENT_TIMESTAMP WHERE user_id = ? AND revoked_at IS NULL',
+          [req.params.id]
+        );
+      }
+      await connection.execute(
+        `INSERT INTO admin_audit_events
+         (id, admin_id, action, target_type, target_id, previous_state, new_state, details)
+         VALUES (?, ?, ?, 'user', ?, ?, ?, ?)`,
+        [uuidv4(), req.user.id, accountStatus === 'suspended' ? 'user_suspended' : 'user_reactivated', req.params.id, previousStatus, accountStatus, null]
+      );
+      await createUserNotification({
+        userId: req.params.id,
+        type: 'account',
+        title: accountStatus === 'suspended' ? 'Account suspended' : 'Account reactivated',
+        message: accountStatus === 'suspended'
+          ? 'Your account has been suspended. Contact the ProjectSphere team if you need assistance.'
+          : 'Your account has been reactivated.',
+      }, connection);
+      await connection.commit();
+      return sendSuccess(res, { accountStatus, message: 'User account status updated.' });
+    } catch (error) {
+      await connection.rollback();
+      console.error('User account moderation failed:', error);
+      return sendError(res, 500, 'Unable to update user account status.');
+    } finally {
+      connection.release();
+    }
+  }
 
 export async function listAdminReviews(req, res) {
   const { page, limit, offset } = pagination(req.query);

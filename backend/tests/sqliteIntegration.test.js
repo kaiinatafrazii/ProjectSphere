@@ -40,11 +40,12 @@ test('SQLite initializes persistently and supports the account, project, review,
   for (const table of [
     'users', 'projects', 'project_reviews', 'saved_projects', 'auth_sessions',
     'contact_messages', 'project_moderation_history', 'project_source_code',
+    'user_notifications', 'project_reports', 'admin_audit_events', 'password_reset_tokens',
   ]) {
     assert.ok(tables.includes(table), `${table} table exists`);
   }
   assert.equal(db.pragma('foreign_keys', { simple: true }), 1);
-  assert.equal(db.pragma('user_version', { simple: true }), 3);
+  assert.equal(db.pragma('user_version', { simple: true }), 4);
   assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_contact_messages_read_created'").get());
   assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_projects_status_created'").get());
 
@@ -347,6 +348,22 @@ test('SQLite initializes persistently and supports the account, project, review,
     cookie: adminLogin.cookie,
     body: { action: 'approve', feedback: '' },
   }).then((response) => assert.equal(response.status, 200));
+  const moderationNotifications = await request('/users/me/notifications?unread=true', { cookie: owner.cookie });
+  assert.equal(moderationNotifications.status, 200);
+  assert.equal(moderationNotifications.body.notifications.length, 2);
+  assert.deepEqual(new Set(moderationNotifications.body.notifications.map((item) => item.type)), new Set(['project_rejected', 'project_approved']));
+  const foreignNotificationUpdate = await request(`/users/me/notifications/${moderationNotifications.body.notifications[0].id}`, {
+    method: 'PATCH',
+    cookie: reviewer.cookie,
+    body: { isRead: true },
+  });
+  assert.equal(foreignNotificationUpdate.status, 404);
+  const markAllNotificationsRead = await request('/users/me/notifications/read-all', {
+    method: 'PATCH',
+    cookie: owner.cookie,
+  });
+  assert.equal(markAllNotificationsRead.status, 200);
+  assert.equal((await request('/users/me/notifications?unread=true', { cookie: owner.cookie })).body.unreadCount, 0);
   const discovered = await request('/projects');
   assert.ok(discovered.body.projects.some((project) => project.id === projectId));
   const publicProject = await request(`/projects/${projectId}`);
@@ -380,6 +397,10 @@ test('SQLite initializes persistently and supports the account, project, review,
   assert.equal(updatedReview.status, 201);
   assert.equal(db.prepare('SELECT COUNT(*) AS count FROM project_reviews WHERE project_id = ? AND user_id = ?').get(projectId, reviewer.user.id).count, 1);
   assert.equal(db.prepare('SELECT rating FROM project_reviews WHERE project_id = ? AND user_id = ?').get(projectId, reviewer.user.id).rating, 3);
+  assert.equal(db.prepare("SELECT COUNT(*) AS count FROM user_notifications WHERE user_id = ? AND type = 'new_review'").get(owner.user.id).count, 1);
+  const reviewNotification = await request('/users/me/notifications?unread=true', { cookie: owner.cookie });
+  assert.equal(reviewNotification.body.notifications.length, 1);
+  assert.equal(reviewNotification.body.notifications[0].type, 'new_review');
 
   const ownerReview = await request(`/projects/${projectId}/reviews`, {
     method: 'POST',
@@ -428,9 +449,40 @@ test('SQLite initializes persistently and supports the account, project, review,
   assert.equal(updatedAdminLogin.status, 200);
   assert.equal(updatedAdminLogin.body.user.role, 'admin');
 
+  const selfSuspend = await request(`/admin/users/${admin.user.id}/status`, {
+    method: 'PATCH',
+    cookie: updatedAdminLogin.cookie,
+    body: { accountStatus: 'suspended' },
+  });
+  assert.equal(selfSuspend.status, 409);
+  const suspendReviewer = await request(`/admin/users/${reviewer.user.id}/status`, {
+    method: 'PATCH',
+    cookie: updatedAdminLogin.cookie,
+    body: { accountStatus: 'suspended' },
+  });
+  assert.equal(suspendReviewer.status, 200);
+  assert.equal(suspendReviewer.body.accountStatus, 'suspended');
+  assert.equal((await request('/users/me/bookmarks', { cookie: reviewer.cookie })).status, 401);
+  assert.equal((await request('/auth/login', {
+    method: 'POST',
+    body: { email: 'reviewer@example.test', password: 'secure-password-123' },
+  })).status, 403);
+  const reactivateReviewer = await request(`/admin/users/${reviewer.user.id}/status`, {
+    method: 'PATCH',
+    cookie: updatedAdminLogin.cookie,
+    body: { accountStatus: 'active' },
+  });
+  assert.equal(reactivateReviewer.status, 200);
+  const reviewerAfterReactivation = await request('/auth/login', {
+    method: 'POST',
+    body: { email: 'reviewer@example.test', password: 'secure-password-123' },
+  });
+  assert.equal(reviewerAfterReactivation.status, 200);
+  assert.equal(db.prepare("SELECT COUNT(*) AS count FROM admin_audit_events WHERE target_id = ? AND action IN ('user_suspended', 'user_reactivated')").get(reviewer.user.id).count, 2);
+
   const failureResponse = await request('/projects/not-a-project/reviews', {
     method: 'POST',
-    cookie: reviewer.cookie,
+    cookie: reviewerAfterReactivation.cookie,
     body: { rating: 1, comment: 'No project exists.' },
   });
   assert.equal(failureResponse.status, 404);
@@ -513,7 +565,9 @@ test('SQLite upgrades an existing schema version without resetting its records',
     const user = db.prepare('SELECT name FROM users WHERE id = ?').get('legacy-admin');
     const contactReadColumn = db.pragma('table_info(contact_messages)').some((column) => column.name === 'is_read');
     const sourceTable = db.prepare(\"SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'project_source_code'\").get();
-    if (db.pragma('user_version', { simple: true }) !== 3 || user?.name !== 'Legacy Admin' || !contactReadColumn || !sourceTable) process.exitCode = 1;
+    const accountStatusColumn = db.pragma('table_info(users)').some((column) => column.name === 'account_status');
+    const notificationsTable = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'user_notifications'").get();
+    if (db.pragma('user_version', { simple: true }) !== 4 || user?.name !== 'Legacy Admin' || !contactReadColumn || !sourceTable || !accountStatusColumn || !notificationsTable) process.exitCode = 1;
     db.close();
   `], {
     cwd: backendDirectory,

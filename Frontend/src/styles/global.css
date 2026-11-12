@@ -2921,3 +2921,62 @@ button:disabled {
     width: 170px;
   }
 }
+
+.notification-list {
+  display: grid;
+}
+
+.notification-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 14px;
+  border-bottom: 1px solid var(--line);
+  background: #fff;
+}
+
+.notification-item.is-unread {
+  border-left: 3px solid var(--steel);
+  background: rgba(55, 107, 145, 0.06);
+}
+
+.notification-copy {
+  min-width: 0;
+}
+
+.notification-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 16px;
+}
+
+.notification-heading h3,
+.notification-copy p {
+  margin: 0;
+}
+
+.notification-heading time {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.notification-copy p {
+  margin: 6px 0;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 600px) {
+  .notification-item {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    padding: 16px 10px;
+  }
+
+  .notification-item > button {
+    justify-self: start;
+  }
+}

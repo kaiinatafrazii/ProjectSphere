@@ -21,6 +21,7 @@ import AdminLoginPage from './pages/AdminLoginPage.jsx';
 import AdminContactMessagesPage from './pages/AdminContactMessagesPage.jsx';
 import AdminProfilePage from './pages/AdminProfilePage.jsx';
 import CreatorProfilePage from './pages/CreatorProfilePage.jsx';
+import NotificationsPage from './pages/NotificationsPage.jsx';
 
 const pageMetadata = [
   { match: (path) => path === '/', title: 'ProjectSphere — Discover and share developer projects', description: 'Discover remarkable developer projects, share your work, explore technologies, and learn from community reviews.' },
@@ -33,6 +34,7 @@ const pageMetadata = [
   { match: (path) => path.startsWith('/dashboard/projects/new') || path.startsWith('/dashboard/projects/') || path === '/publish', title: 'Share a Project — ProjectSphere', description: 'Publish your project and share its story with the ProjectSphere community.' },
   { match: (path) => path === '/dashboard/profile' || path === '/profile', title: 'Your Profile — ProjectSphere', description: 'View your ProjectSphere creator profile and published work.' },
   { match: (path) => path === '/dashboard/bookmarks' || path === '/saved', title: 'Saved Projects — ProjectSphere', description: 'Revisit projects you have saved on ProjectSphere.' },
+    { match: (path) => path === '/dashboard/notifications', title: 'Notifications — ProjectSphere', description: 'View project moderation updates and new community reviews.' },
   { match: (path) => path.startsWith('/dashboard'), title: 'Project Dashboard — ProjectSphere', description: 'Manage your projects and account on ProjectSphere.' },
   { match: (path) => path.startsWith('/admin'), title: 'Administration — ProjectSphere', description: 'Review project submissions and platform records.' },
   { match: (path) => path === '/privacy', title: 'Privacy Policy — ProjectSphere', description: 'Read how ProjectSphere handles account, project, contact, and session information.' },
@@ -167,6 +169,7 @@ export default function App() {
           <Route path="projects/:id/edit" element={<PublishPage />} />
           <Route path="bookmarks" element={<SavedProjectsPage />} />
           <Route path="reviews" element={<DashboardReviewsPage />} />
+                    <Route path="notifications" element={<NotificationsPage />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
