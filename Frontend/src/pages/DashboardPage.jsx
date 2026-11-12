@@ -159,7 +159,7 @@ export default function DashboardPage() {
                       <div className="dashboard-project-actions">
                         {['published', 'featured'].includes(project.status) ? <Link className="secondary-button" to={`/projects/${encodeURIComponent(project.id)}`}>Preview</Link> : null}
                         {project.status !== 'removed' ? <Link className="secondary-button" to={`/dashboard/projects/${encodeURIComponent(project.id)}/edit`}>Edit</Link> : null}
-                        <button className="secondary-button" type="button" onClick={() => removeProject(project)} disabled={deletingId === project.id}>
+                        <button className="secondary-button danger-button" type="button" onClick={() => removeProject(project)} disabled={deletingId === project.id}>
                           {deletingId === project.id ? 'Removing…' : 'Remove'}
                         </button>
                       </div>

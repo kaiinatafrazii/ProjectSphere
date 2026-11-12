@@ -165,10 +165,6 @@ export default function DashboardLayout({ admin = false }) {
           ))}
         </nav>
         <div className="dashboard-sidebar-bottom">
-          <Link to="/" className="dashboard-nav-link public-site-link" title={collapsed ? 'View public website' : undefined} onClick={() => setDrawerOpen(false)}>
-            <span className="public-site-icon" aria-hidden="true">↗</span>
-            <span>View public website</span>
-          </Link>
           <div className="dashboard-account">
             <img src={user?.avatarUrl || '/favicon.svg'} alt="" />
             <div className="dashboard-account-copy">
@@ -209,7 +205,6 @@ export default function DashboardLayout({ admin = false }) {
             <div className="dashboard-breadcrumb"><Link to={admin ? '/admin' : '/dashboard'}>{admin ? 'Admin' : 'Workspace'}</Link><span aria-hidden="true">/</span><strong>{title}</strong></div>
             <h1>{title}</h1>
           </div>
-          <Link to="/" className="dashboard-header-home">Public site <span aria-hidden="true">↗</span></Link>
         </header>
         <main className="dashboard-content">
           {logoutError ? <p className="error-text dashboard-alert" role="alert">{logoutError}</p> : null}

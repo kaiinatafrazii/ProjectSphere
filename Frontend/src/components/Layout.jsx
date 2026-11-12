@@ -1,4 +1,4 @@
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Outlet, matchPath, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
@@ -6,7 +6,6 @@ const landingSections = [
   ['home', 'Home'],
   ['about', 'About'],
   ['features', 'Features'],
-  ['how-it-works', 'How It Works'],
   ['testimonials', 'Testimonials'],
   ['contact', 'Contact'],
 ];
@@ -22,6 +21,9 @@ export default function Layout() {
   const [logoutError, setLogoutError] = useState('');
   const [loggingOut, setLoggingOut] = useState(false);
   const isAuthRoute = location.pathname === '/login' || location.pathname === '/register';
+  const isDiscoverRoute = Boolean(matchPath('/discover', location.pathname));
+  const isProjectDetailsRoute = Boolean(matchPath('/projects/:id', location.pathname));
+  const hideNavActions = (isDiscoverRoute || isProjectDetailsRoute) && (user || loading);
 
   useEffect(() => {
     setMenuOpen(false);
@@ -135,7 +137,7 @@ export default function Layout() {
 
             <nav id="primary-navigation" className={menuOpen ? 'main-nav is-open' : 'main-nav'} aria-label="Main navigation">
               <NavLink to="/discover" className={({ isActive }) => isActive ? 'active' : undefined}>Explore</NavLink>
-              {landingSections.map(([id, label]) => (
+              {location.pathname === '/' && landingSections.map(([id, label]) => (
                 <a
                   key={id}
                   href={`/#${id}`}
@@ -148,7 +150,7 @@ export default function Layout() {
               ))}
             </nav>
 
-            <div className="nav-actions">
+            {hideNavActions ? null : <div className="nav-actions">
               {loading ? <span className="user-greeting" role="status">Checking session…</span> : user ? (
                 <>
                   <Link to="/dashboard" className="secondary-button nav-profile">Dashboard</Link>
@@ -166,7 +168,7 @@ export default function Layout() {
                   <NavLink to="/register" className="primary-button">Get Started</NavLink>
                 </>
               )}
-            </div>
+            </div>}
           </div>
         </header>
       )}

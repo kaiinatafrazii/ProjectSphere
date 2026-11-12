@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import ProjectCard from '../components/ProjectCard.jsx';
 import { apiRequest } from '../services/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -70,9 +70,17 @@ export default function DiscoverPage() {
     <div className="page-shell narrow-page">
       <section className="section-block">
         <div className="container">
-          <div className="section-heading left-aligned">
-            <span className="eyebrow">Explore the catalog</span>
-            <h2>Find your next inspiration</h2>
+          <div className="section-heading discover-heading">
+            <div className="discover-heading-copy">
+              <span className="eyebrow">Explore the catalog</span>
+              <h2>Find your next inspiration</h2>
+            </div>
+            {user ? (
+              <Link to={user.role === 'admin' ? '/admin' : '/dashboard'} className="secondary-button discover-dashboard-link">
+                <span aria-hidden="true">←</span>
+                Back to Dashboard
+              </Link>
+            ) : null}
           </div>
 
           <div className="toolbar">

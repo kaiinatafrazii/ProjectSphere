@@ -299,12 +299,12 @@ export default function AdminPage() {
                       <div className="dashboard-project-actions">
                         {['pending', 'changes_requested', 'rejected'].includes(project.status) ? (
                           <>
-                            <button className="primary-button" disabled={busyId === project.id} onClick={() => moderate(project, 'approve')}>Approve</button>
-                            <button className="secondary-button" disabled={busyId === project.id} onClick={() => moderate(project, 'request_changes')}>Request changes</button>
-                            <button className="secondary-button" disabled={busyId === project.id} onClick={() => moderate(project, 'reject')}>Reject</button>
+                            <button className="primary-button" disabled={busyId === project.id} onClick={() => moderate(project, 'approve')}>{busyId === project.id ? 'Saving…' : 'Approve'}</button>
+                            <button className="secondary-button" disabled={busyId === project.id} onClick={() => moderate(project, 'request_changes')}>{busyId === project.id ? 'Saving…' : 'Request changes'}</button>
+                            <button className="secondary-button danger-button" disabled={busyId === project.id} onClick={() => moderate(project, 'reject')}>{busyId === project.id ? 'Saving…' : 'Reject'}</button>
                           </>
                         ) : null}
-                        {project.status !== 'removed' ? <button className="secondary-button" disabled={busyId === project.id} onClick={() => moderate(project, 'remove')}>Remove</button> : null}
+                        {project.status !== 'removed' ? <button className="secondary-button danger-button" disabled={busyId === project.id} onClick={() => moderate(project, 'remove')}>{busyId === project.id ? 'Saving…' : 'Remove'}</button> : null}
                       </div>
                     </div>
                   </article>

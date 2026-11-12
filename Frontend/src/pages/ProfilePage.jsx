@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { apiRequest } from '../services/api.js';
@@ -16,6 +16,7 @@ export default function ProfilePage() {
   const [processingPhoto, setProcessingPhoto] = useState(false);
   const [profilePhotoCleared, setProfilePhotoCleared] = useState(false);
   const [form, setForm] = useState({ name: '', bio: '', location: '', skills: '', avatarUrl: '' });
+  const profilePhotoInputRef = useRef(null);
 
   useEffect(() => {
     async function loadProfile() {
@@ -112,11 +113,28 @@ export default function ProfilePage() {
       .finally(() => setProcessingPhoto(false));
   };
 
+  const openProfilePhotoPicker = () => {
+    if (!editing && profile) {
+      setForm({
+        name: profile.name || '',
+        bio: profile.bio || '',
+        location: profile.location || '',
+        skills: (profile.skills || []).join(', '),
+        avatarUrl: profile.avatarUrl || '',
+      });
+      setEditing(true);
+    }
+    setProfilePhotoCleared(false);
+    setError('');
+    setSuccess('');
+    profilePhotoInputRef.current?.click();
+  };
+
   if (loading) {
     return <div className="page-shell center-block"><div className="empty-state" role="status">Loading your profile…</div></div>;
   }
 
-  if (error) {
+  if (error && !profile) {
     return <div className="page-shell center-block"><div className="empty-state" role="alert">{error}</div></div>;
   }
 
@@ -129,7 +147,20 @@ export default function ProfilePage() {
       <section className="section-block">
         <div className="container profile-layout">
           <div className="profile-card">
-            <img src={profile?.avatarUrl || '/favicon.svg'} alt={`${profile?.name || user?.name}'s profile`} />
+            <div className="profile-avatar-wrap">
+              <img src={profile?.avatarUrl || '/favicon.svg'} alt={`${profile?.name || user?.name}'s profile`} />
+              <button type="button" className="profile-avatar-change" onClick={openProfilePhotoPicker} disabled={processingPhoto}>
+                {processingPhoto ? 'Preparing…' : 'Change photo'}
+              </button>
+              <input
+                ref={profilePhotoInputRef}
+                className="visually-hidden"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                aria-label="Choose a profile photo"
+                onChange={chooseProfilePhoto}
+              />
+            </div>
             <div>
               <span className="eyebrow">Creator profile</span>
               <h1>{profile?.name || user?.name}</h1>
@@ -175,7 +206,7 @@ export default function ProfilePage() {
               <span>Published projects</span>
             </div>
             <div className="summary-box">
-              <strong>{profile?.location || 'Remote'}</strong>
+              <strong>{profile?.location || 'Not specified'}</strong>
               <span>Location</span>
             </div>
             <div className="summary-box">

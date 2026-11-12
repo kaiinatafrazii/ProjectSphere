@@ -16,6 +16,8 @@ export default function ProjectDetailsPage() {
   const [submittingReview, setSubmittingReview] = useState(false);
   const [loadError, setLoadError] = useState('');
 
+  const isTeacherOrAdmin = ['admin', 'teacher', 'researcher'].includes(user?.role);
+
   useEffect(() => {
     async function loadProject() {
       try {
@@ -64,6 +66,10 @@ export default function ProjectDetailsPage() {
   if (loading) return <div className="page-shell center-block"><div className="empty-state">Loading project details...</div></div>;
   if (!project) return <div className="page-shell center-block"><div className="empty-state" role="alert">{loadError || 'Project not found.'}<p><Link to="/discover">Return to projects</Link></p></div></div>;
   const isOwner = user?.id && user.id === project.owner?.id;
+  const canViewSourceCode = isOwner || isTeacherOrAdmin;
+  const averageRating = project.ratingAverage === null || project.ratingAverage === undefined
+    ? '—'
+    : Number.isFinite(Number(project.ratingAverage)) ? Number(project.ratingAverage).toFixed(1) : '—';
 
   return (
     <div className="page-shell detail-page">
@@ -74,8 +80,9 @@ export default function ProjectDetailsPage() {
             <h1>{project.title}</h1>
             <p className="project-tagline large">{project.tagline}</p>
             <div className="hero-actions compact">
-              {project.liveUrl ? <a href={project.liveUrl} className="primary-button" target="_blank" rel="noreferrer">Live demo</a> : null}
-              {project.repoUrl ? <a href={project.repoUrl} className="secondary-button" target="_blank" rel="noreferrer">Public repository</a> : null}
+              {project.liveUrl ? <a href={project.liveUrl} className="primary-button" target="_blank" rel="noreferrer">Presentation / demo</a> : null}
+              {canViewSourceCode && project.repoUrl ? <a href={project.repoUrl} className="secondary-button" target="_blank" rel="noreferrer">Source code / repository</a> : null}
+              {!canViewSourceCode ? <span className="restriction-badge">Source code is restricted to admin and teacher access.</span> : null}
             </div>
           </div>
           <div className="project-hero-media">
@@ -88,8 +95,13 @@ export default function ProjectDetailsPage() {
         <div className="container project-layout">
           <div className="project-content">
             <div className="card-panel">
-              <h2>Overview</h2>
-              <p>{project.overview}</p>
+              <h2>Project idea</h2>
+              <p>{project.overview || project.summary}</p>
+            </div>
+
+            <div className="card-panel">
+              <h2>Summary</h2>
+              <p>{project.summary}</p>
             </div>
 
             <div className="card-panel">
@@ -105,7 +117,7 @@ export default function ProjectDetailsPage() {
               <h2>Reviews</h2>
               <p className="muted-copy">
                 {project.reviewCount || 0} ratings
-                {project.ratingAverage !== null && project.ratingAverage !== undefined ? ` · ${project.ratingAverage} average` : ''}
+                {project.ratingAverage !== null && project.ratingAverage !== undefined ? ` · ${averageRating} average rating` : ''}
               </p>
               {project.reviews && project.reviews.length > 0 ? (
                 <div className="review-list">
@@ -129,7 +141,7 @@ export default function ProjectDetailsPage() {
           <aside className="project-sidebar">
             <div className="card-panel sticky-panel">
               <div className="profile-mini">
-                <img src={optimizedImageUrl(project.owner?.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde', 120)} alt="" loading="lazy" decoding="async" />
+                <img src={optimizedImageUrl(project.owner?.avatarUrl || '/favicon.svg', 120)} alt="" loading="lazy" decoding="async" />
                 <div>
                   {project.owner ? <Link to={`/creators/${encodeURIComponent(project.owner.id)}`}><strong>{project.owner.name}</strong></Link> : <strong>Creator</strong>}
                   <p>{project.owner ? 'Project author' : 'Community creator'}</p>
@@ -138,12 +150,8 @@ export default function ProjectDetailsPage() {
 
               <dl className="stats-list">
                 <div>
-                  <dt>Reviews</dt>
-                  <dd>{project.reviewCount ?? project.reviews?.length ?? 0}</dd>
-                </div>
-                <div>
                   <dt>Average rating</dt>
-                  <dd>{project.ratingAverage ?? '—'}</dd>
+                  <dd>{averageRating}</dd>
                 </div>
               </dl>
             </div>

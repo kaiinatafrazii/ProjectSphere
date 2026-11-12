@@ -14,6 +14,9 @@ export default function ProjectCard({ project, initialSaved = false, onSavedChan
     setSaved(initialSaved);
   }, [initialSaved]);
 
+  const ratingValue = Number(project?.ratingAverage ?? 0);
+  const averageRating = Number.isFinite(ratingValue) && ratingValue > 0 ? ratingValue.toFixed(1) : null;
+
   const toggleSaved = async () => {
     setSaving(true);
     setError('');
@@ -47,7 +50,7 @@ export default function ProjectCard({ project, initialSaved = false, onSavedChan
         <div className="card-meta-row">
           <span className="pill">{project.category}</span>
           <span className="muted-text">
-            {project.reviewCount > 0 ? `${project.ratingAverage} · ${project.reviewCount} ratings` : 'New project'}
+            {averageRating ? `${averageRating}/5 · ${project.reviewCount} reviews` : 'No reviews yet'}
           </span>
         </div>
         <h3>{project.title}</h3>
@@ -60,7 +63,7 @@ export default function ProjectCard({ project, initialSaved = false, onSavedChan
         </div>
         <div className="card-footer">
           <div className="owner-line">
-            <img src={optimizedImageUrl(project.owner?.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde', 120)} alt="" loading="lazy" decoding="async" />
+            <img src={optimizedImageUrl(project.owner?.avatarUrl || '/favicon.svg', 120)} alt="" loading="lazy" decoding="async" />
             <span>{project.owner?.name || 'Community project'}</span>
           </div>
           <Link to={`/projects/${project.id}`} className="link-button">
