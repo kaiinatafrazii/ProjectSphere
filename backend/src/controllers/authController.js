@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import { createHash, randomBytes } from 'node:crypto';
 import { findUserByEmail, createUser } from '../repositories/userRepository.js';
 import {
   buildUserView,
@@ -16,6 +17,8 @@ import {
 } from '../services/authService.js';
 import { findUserById } from '../repositories/userRepository.js';
 import { sendError, sendSuccess } from '../utils/response.js';
+import { pool } from '../config/db.js';
+import { sendEmail } from '../services/emailService.js';
 
 export async function register(req, res) {
   try {
