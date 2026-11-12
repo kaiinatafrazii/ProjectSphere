@@ -3,6 +3,7 @@ import { getUserProfile, updateOwnProfile } from '../controllers/userController.
 import { requireAuth } from '../middleware/auth.js';
 import { listSavedProjects } from '../controllers/bookmarkController.js';
 import { listUserNotifications, markAllNotificationsRead, updateNotificationReadState } from '../controllers/notificationController.js';
+import { changeOwnPassword, confirmEmailChange, getUserPreferences, requestEmailChange, updateUserPreferences } from '../controllers/settingsController.js';
 
 const router = express.Router();
 
@@ -12,6 +13,11 @@ router.get('/me/bookmarks', requireAuth, listSavedProjects);
 router.get('/me/notifications', requireAuth, listUserNotifications);
 router.patch('/me/notifications/read-all', requireAuth, markAllNotificationsRead);
 router.patch('/me/notifications/:id', requireAuth, updateNotificationReadState);
+router.get('/me/preferences', requireAuth, getUserPreferences);
+router.put('/me/preferences', requireAuth, updateUserPreferences);
+router.put('/me/password', requireAuth, changeOwnPassword);
+router.post('/me/email-change', requireAuth, requestEmailChange);
+router.post('/email-change/confirm', confirmEmailChange);
 router.get('/:id', getUserProfile);
 
 export default router;

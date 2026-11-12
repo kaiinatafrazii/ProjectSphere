@@ -631,6 +631,45 @@ test('development admin setup creates an administrator with a password hash and 
   assert.match(productionSetup.stderr, /disabled in production/i);
 });
 
+test('production admin provisioning is designated, hashed, audited, and one-time', (context) => {
+  const temporaryDirectory = mkdtempSync(path.join(os.tmpdir(), 'projectsphere-production-admin-'));
+  const databasePath = path.join(temporaryDirectory, 'production-admin.sqlite');
+  context.after(() => rmSync(temporaryDirectory, { recursive: true, force: true }));
+  const childEnv = {
+    ...process.env,
+    SQLITE_DB_PATH: databasePath,
+    NODE_ENV: 'production',
+    JWT_SECRET: 'projectsphere-production-provision-test-secret',
+    ADMIN_EMAIL: 'kainatafrazii11@gmail.com',
+    ADMIN_PASSWORD: 'production-test-only-password',
+  };
+  const setup = spawnSync(process.execPath, ['scripts/provision-production-admin.js'], {
+    cwd: backendDirectory,
+    env: childEnv,
+    encoding: 'utf8',
+  });
+  assert.equal(setup.status, 0, setup.stderr);
+  assert.doesNotMatch(setup.stdout, /production-test-only-password/);
+
+  const verify = spawnSync(process.execPath, ['--input-type=module', '-e', `
+    import { db } from './src/config/db.js';
+    import { verifyPassword } from './src/services/authService.js';
+    const user = db.prepare('SELECT id, role, account_status, password_hash FROM users WHERE email = ?').get('kainatafrazii11@gmail.com');
+    const event = db.prepare("SELECT action FROM admin_audit_events WHERE action = 'admin_provisioned' AND target_id = ?").get(user?.id);
+    if (!user || user.role !== 'admin' || user.account_status !== 'active' || !(await verifyPassword('production-test-only-password', user.password_hash)) || !event) process.exitCode = 1;
+    db.close();
+  `], { cwd: backendDirectory, env: childEnv, encoding: 'utf8' });
+  assert.equal(verify.status, 0, verify.stderr);
+
+  const secondRun = spawnSync(process.execPath, ['scripts/provision-production-admin.js'], {
+    cwd: backendDirectory,
+    env: childEnv,
+    encoding: 'utf8',
+  });
+  assert.notEqual(secondRun.status, 0);
+  assert.match(secondRun.stderr, /already provisioned/i);
+});
+
 test('SQLite upgrades an existing schema version without resetting its records', (context) => {
   const temporaryDirectory = mkdtempSync(path.join(os.tmpdir(), 'projectsphere-migration-'));
   const databasePath = path.join(temporaryDirectory, 'legacy.sqlite');
