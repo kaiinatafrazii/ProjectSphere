@@ -1,4 +1,3 @@
-  const [form, setForm] = useState({ name: '', bio: '', location: '', skills: '', avatarUrl: '', username: '', githubUrl: '', linkedinUrl: '', websiteUrl: '' });
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -16,7 +15,7 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [processingPhoto, setProcessingPhoto] = useState(false);
   const [profilePhotoCleared, setProfilePhotoCleared] = useState(false);
-  const [form, setForm] = useState({ name: '', bio: '', location: '', skills: '', avatarUrl: '' });
+  const [form, setForm] = useState({ name: '', bio: '', location: '', skills: '', avatarUrl: '', username: '', githubUrl: '', linkedinUrl: '', websiteUrl: '' });
   const profilePhotoInputRef = useRef(null);
 
   useEffect(() => {

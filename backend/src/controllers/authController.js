@@ -85,6 +85,112 @@ export async function register(req, res) {
   }
 }
 
+const passwordResetRequestMessage = 'If an active account matches that email, password reset instructions will be sent.';
+
+export async function requestPasswordReset(req, res) {
+  const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+  try {
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      const user = await findUserByEmail(email);
+      if (user && (user.account_status || 'active') === 'active') {
+        const token = randomBytes(32).toString('base64url');
+        const tokenHash = createHash('sha256').update(token).digest('hex');
+        const connection = await pool.getConnection();
+        try {
+          await connection.beginTransaction();
+          await connection.execute(
+            'UPDATE password_reset_tokens SET consumed_at = CURRENT_TIMESTAMP WHERE user_id = ? AND consumed_at IS NULL',
+            [user.id]
+          );
+          await connection.execute(
+            'INSERT INTO password_reset_tokens (id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)',
+            [generateId(), user.id, tokenHash, new Date(Date.now() + 30 * 60 * 1000).toISOString()]
+          );
+          await connection.commit();
+        } catch (error) {
+          await connection.rollback();
+          throw error;
+        } finally {
+          connection.release();
+        }
+
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        const resetUrl = new URL('/reset-password', frontendUrl);
+        resetUrl.searchParams.set('token', token);
+        try {
+          const delivered = await sendEmail({
+            to: user.email,
+            subject: 'Reset your ProjectSphere password',
+            text: `Use this link within 30 minutes to reset your password: ${resetUrl.toString()}`,
+            html: `<p>Use this link within 30 minutes to reset your ProjectSphere password:</p><p><a href="${resetUrl.toString()}">Reset password</a></p>`,
+          });
+          if (!delivered) {
+            await pool.execute(
+              'UPDATE password_reset_tokens SET consumed_at = CURRENT_TIMESTAMP WHERE token_hash = ?',
+              [tokenHash]
+            );
+          }
+        } catch {
+          await pool.execute(
+            'UPDATE password_reset_tokens SET consumed_at = CURRENT_TIMESTAMP WHERE token_hash = ?',
+            [tokenHash]
+          );
+          console.error('Password reset email delivery failed.');
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Password reset request failed:', error);
+  }
+  return sendSuccess(res, { message: passwordResetRequestMessage }, 202);
+}
+
+export async function resetPassword(req, res) {
+  const token = typeof req.body?.token === 'string' ? req.body.token : '';
+  const password = typeof req.body?.password === 'string' ? req.body.password : '';
+  if (!token || token.length > 128 || password.length < 12 || password.length > 72) {
+    return sendError(res, 400, 'Use a valid reset link and a password between 12 and 72 characters.');
+  }
+
+  const tokenHash = createHash('sha256').update(token).digest('hex');
+  const passwordHash = await hashPassword(password);
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    const [rows] = await connection.execute(
+      `SELECT t.id, t.user_id AS userId FROM password_reset_tokens t
+       JOIN users u ON u.id = t.user_id
+       WHERE t.token_hash = ? AND t.consumed_at IS NULL
+         AND datetime(t.expires_at) > CURRENT_TIMESTAMP
+         AND u.account_status = 'active'`,
+      [tokenHash]
+    );
+    if (!rows.length) {
+      await connection.rollback();
+      return sendError(res, 400, 'This reset link is invalid or expired. Request a new one.');
+    }
+    const { id: tokenId, userId } = rows[0];
+    await connection.execute('UPDATE users SET password_hash = ? WHERE id = ?', [passwordHash, userId]);
+    await connection.execute('UPDATE password_reset_tokens SET consumed_at = CURRENT_TIMESTAMP WHERE id = ?', [tokenId]);
+    await connection.execute(
+      'UPDATE password_reset_tokens SET consumed_at = CURRENT_TIMESTAMP WHERE user_id = ? AND id <> ? AND consumed_at IS NULL',
+      [userId, tokenId]
+    );
+    await connection.execute(
+      'UPDATE auth_sessions SET revoked_at = CURRENT_TIMESTAMP WHERE user_id = ? AND revoked_at IS NULL',
+      [userId]
+    );
+    await connection.commit();
+    return sendSuccess(res, { message: 'Password updated. Sign in with your new password.' });
+  } catch (error) {
+    await connection.rollback();
+    console.error('Password reset failed:', error);
+    return sendError(res, 500, 'Unable to reset password right now.');
+  } finally {
+    connection.release();
+  }
+}
+
 export async function login(req, res) {
   try {
     const { email, password } = req.body;

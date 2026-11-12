@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import Database from 'better-sqlite3';
@@ -482,6 +483,32 @@ test('SQLite initializes persistently and supports the account, project, review,
 
   const privateFeedback = await request('/admin/history', { cookie: reviewer.cookie });
   assert.equal(privateFeedback.status, 403);
+
+  const resetToken = 'single-use-reset-token-for-integration';
+  db.prepare('INSERT INTO password_reset_tokens (id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)').run(
+    'reset-token-test',
+    owner.user.id,
+    createHash('sha256').update(resetToken).digest('hex'),
+    new Date(Date.now() + 10 * 60 * 1000).toISOString()
+  );
+  const passwordReset = await request('/auth/reset-password', {
+    method: 'POST',
+    body: { token: resetToken, password: 'owner-reset-password-456' },
+  });
+  assert.equal(passwordReset.status, 200);
+  assert.equal((await request('/users/me/bookmarks', { cookie: owner.cookie })).status, 401);
+  assert.equal((await request('/auth/login', {
+    method: 'POST',
+    body: { email: 'owner@example.test', password: 'secure-password-123' },
+  })).status, 401);
+  assert.equal((await request('/auth/login', {
+    method: 'POST',
+    body: { email: 'owner@example.test', password: 'owner-reset-password-456' },
+  })).status, 200);
+  assert.equal((await request('/auth/reset-password', {
+    method: 'POST',
+    body: { token: resetToken, password: 'another-owner-password-789' },
+  })).status, 400);
 
   const wrongAdminPassword = await request('/admin/password', {
     method: 'PUT',
