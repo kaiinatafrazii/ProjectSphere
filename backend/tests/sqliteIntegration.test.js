@@ -42,11 +42,12 @@ test('SQLite initializes persistently and supports the account, project, review,
     'users', 'projects', 'project_reviews', 'saved_projects', 'auth_sessions',
     'contact_messages', 'project_moderation_history', 'project_source_code',
     'user_notifications', 'project_reports', 'admin_audit_events', 'password_reset_tokens',
+    'user_preferences', 'email_change_tokens',
   ]) {
     assert.ok(tables.includes(table), `${table} table exists`);
   }
   assert.equal(db.pragma('foreign_keys', { simple: true }), 1);
-  assert.equal(db.pragma('user_version', { simple: true }), 5);
+  assert.equal(db.pragma('user_version', { simple: true }), 6);
   assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_contact_messages_read_created'").get());
   assert.ok(db.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_projects_status_created'").get());
 
@@ -649,7 +650,8 @@ test('SQLite upgrades an existing schema version without resetting its records',
     const sourceTable = db.prepare(\"SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'project_source_code'\").get();
     const accountStatusColumn = db.pragma('table_info(users)').some((column) => column.name === 'account_status');
     const notificationsTable = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'user_notifications'").get();
-    if (db.pragma('user_version', { simple: true }) !== 5 || user?.name !== 'Legacy Admin' || !contactReadColumn || !sourceTable || !accountStatusColumn || !notificationsTable) process.exitCode = 1;
+    const preferencesTable = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'user_preferences'").get();
+    if (db.pragma('user_version', { simple: true }) !== 6 || user?.name !== 'Legacy Admin' || !contactReadColumn || !sourceTable || !accountStatusColumn || !notificationsTable || !preferencesTable) process.exitCode = 1;
     db.close();
   `], {
     cwd: backendDirectory,

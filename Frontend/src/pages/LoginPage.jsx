@@ -58,6 +58,7 @@ export default function LoginPage() {
         <p className="auth-switch">
           New here? <Link to="/register">Create an account</Link>
         </p>
+        <p className="auth-switch"><Link to="/forgot-password">Forgot your password?</Link></p>
       </div>
     </div>
   );

@@ -7,6 +7,8 @@ import { useAuth } from './context/AuthContext.jsx';
 import DiscoverPage from './pages/DiscoverPage.jsx';
 import HomePage from './pages/HomePage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
+import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx';
+import ResetPasswordPage from './pages/ResetPasswordPage.jsx';
 import ProfilePage from './pages/ProfilePage.jsx';
 import ProjectDetailsPage from './pages/ProjectDetailsPage.jsx';
 import PublishPage from './pages/PublishPage.jsx';
@@ -31,6 +33,8 @@ const pageMetadata = [
   { match: (path) => path.startsWith('/projects/'), title: 'Project details — ProjectSphere', description: 'Explore a project, its technologies, and community feedback on ProjectSphere.' },
   { match: (path) => path.startsWith('/creators/'), title: 'Creator profile — ProjectSphere', description: 'Explore a ProjectSphere creator profile and published projects.' },
   { match: (path) => path === '/login', title: 'Log in — ProjectSphere', description: 'Log in to your ProjectSphere account.' },
+    { match: (path) => path === '/forgot-password', title: 'Forgot password — ProjectSphere', description: 'Request a secure password reset link for your ProjectSphere account.' },
+    { match: (path) => path === '/reset-password', title: 'Reset password — ProjectSphere', description: 'Choose a new password for your ProjectSphere account.' },
   { match: (path) => path === '/admin/login', title: 'Administrator login — ProjectSphere', description: 'Sign in to the ProjectSphere administration dashboard.' },
   { match: (path) => path === '/register', title: 'Create an account — ProjectSphere', description: 'Create a ProjectSphere profile to publish projects and take part in the community.' },
   { match: (path) => path.startsWith('/dashboard/projects/new') || path.startsWith('/dashboard/projects/') || path === '/publish', title: 'Share a Project — ProjectSphere', description: 'Publish your project and share its story with the ProjectSphere community.' },
@@ -159,6 +163,8 @@ export default function App() {
           <Route path="projects/:id" element={<ProjectDetailsPage />} />
           <Route path="creators/:id" element={<CreatorProfilePage />} />
           <Route path="login" element={<GuestRoute><LoginPage /></GuestRoute>} />
+                    <Route path="forgot-password" element={<ForgotPasswordPage />} />
+                    <Route path="reset-password" element={<ResetPasswordPage />} />
           <Route path="register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
           <Route path="privacy" element={<PrivacyPage />} />
           <Route path="terms" element={<TermsPage />} />

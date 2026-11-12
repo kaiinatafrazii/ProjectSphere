@@ -30,6 +30,7 @@ const migrations = [
   '003_project_source_code.sql',
   '004_platform_workflows.sql',
   '005_view_tracking.sql',
+  '006_account_settings.sql',
 ];
 let currentVersion = db.pragma('user_version', { simple: true });
 for (let index = currentVersion; index < migrations.length; index += 1) {
