@@ -2,9 +2,13 @@ import { useEffect, useState } from 'react';
 import ProjectCard from '../components/ProjectCard.jsx';
 import { apiRequest } from '../services/api.js';
 
+const CATALOG_PAGE_SIZE = 12;
+
 export default function SavedProjectsPage() {
   const [projects, setProjects] = useState([]);
   const [catalogProjects, setCatalogProjects] = useState([]);
+  const [catalogPage, setCatalogPage] = useState(1);
+  const [catalogTotal, setCatalogTotal] = useState(0);
   const [loadingSaved, setLoadingSaved] = useState(true);
   const [loadingCatalog, setLoadingCatalog] = useState(true);
   const [savedError, setSavedError] = useState('');
@@ -23,9 +27,14 @@ export default function SavedProjectsPage() {
         if (active) setLoadingSaved(false);
       });
 
-    apiRequest('/projects?sort=newest&page=1&limit=12')
+      setLoadingCatalog(true);
+      setCatalogError('');
+    apiRequest(`/projects?sort=newest&page=${catalogPage}&limit=${CATALOG_PAGE_SIZE}`)
       .then((response) => {
-        if (active) setCatalogProjects(response.projects || []);
+        if (active) {
+          setCatalogProjects(response.projects || []);
+          setCatalogTotal(response.total || 0);
+        }
       })
       .catch(() => {
         if (active) setCatalogError('Unable to load projects to explore. Please try again later.');
@@ -36,7 +45,7 @@ export default function SavedProjectsPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [catalogPage]);
 
   return (
     <div className="page-shell narrow-page">
@@ -93,6 +102,27 @@ export default function SavedProjectsPage() {
                     />
                   ))}
               </div>
+            ) : null}
+            {!loadingCatalog && !catalogError && catalogTotal > CATALOG_PAGE_SIZE ? (
+              <nav className="pagination-controls" aria-label="More projects">
+                <button
+                  className="secondary-button"
+                  type="button"
+                  disabled={catalogPage === 1}
+                  onClick={() => setCatalogPage((current) => current - 1)}
+                >
+                  Previous
+                </button>
+                <span>Page {catalogPage} of {Math.ceil(catalogTotal / CATALOG_PAGE_SIZE)}</span>
+                <button
+                  className="secondary-button"
+                  type="button"
+                  disabled={catalogPage >= Math.ceil(catalogTotal / CATALOG_PAGE_SIZE)}
+                  onClick={() => setCatalogPage((current) => current + 1)}
+                >
+                  Next
+                </button>
+              </nav>
             ) : null}
           </div>
         </div>
