@@ -138,7 +138,6 @@ export default function Layout() {
             </button>
 
             <nav id="primary-navigation" className={menuOpen ? 'main-nav is-open' : 'main-nav'} aria-label="Main navigation">
-              <NavLink to="/discover" className={({ isActive }) => isActive ? 'active' : undefined}>Explore</NavLink>
               {location.pathname === '/' && landingSections.map(([id, label]) => (
                 <a
                   key={id}

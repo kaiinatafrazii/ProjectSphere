@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { apiRequest } from '../services/api.js';
 import { optimizedImageUrl } from '../utils/imageUrl.js';
 
@@ -49,9 +49,7 @@ const steps = [
 ];
 
 export default function HomePage() {
-  const navigate = useNavigate();
   const [featuredProject, setFeaturedProject] = useState(null);
-  const [search, setSearch] = useState('');
   const [projectError, setProjectError] = useState('');
   const [contact, setContact] = useState({ name: '', email: '', subject: '', message: '', website: '' });
   const [contactError, setContactError] = useState('');
@@ -75,12 +73,6 @@ export default function HomePage() {
       active = false;
     };
   }, []);
-
-  const submitSearch = (event) => {
-    event.preventDefault();
-    const query = search.trim();
-    navigate(query ? `/discover?search=${encodeURIComponent(query)}` : '/discover');
-  };
 
   const handleContactChange = (event) => {
     const { name, value } = event.target;
@@ -121,19 +113,8 @@ export default function HomePage() {
               community that cares about the craft.
             </p>
             <div className="hero-actions">
-              <Link to="/discover" className="primary-button">Explore Projects</Link>
-              <Link to="/publish" className="secondary-button">Share Your Project</Link>
+              <Link to="/register" className="primary-button">Get Started</Link>
             </div>
-            <form className="home-search" onSubmit={submitSearch} role="search">
-              <label className="visually-hidden" htmlFor="home-project-search">Search projects</label>
-              <input
-                id="home-project-search"
-                type="search"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-              />
-              <button type="submit" className="secondary-button">Search</button>
-            </form>
           </div>
 
           <div className="hero-visual">
