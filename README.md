@@ -165,6 +165,8 @@ Copy `.env.example` to `.env` and configure your MySQL database credentials, JWT
 
 ### 4. Database Setup with XAMPP MySQL
 
+> **Note:** For a dedicated step-by-step guide on MySQL ports, connection URLs, and resolving Render deployment errors, see [XAMPP_MYSQL_GUIDE.md](file:///c:/Users/kainat%20afrazi/OneDrive/Desktop/ProjectSphere/XAMPP_MYSQL_GUIDE.md).
+
 1. **Start MySQL in XAMPP:**
    - Open the **XAMPP Control Panel** and click **Start** next to MySQL (or run `C:\xampp\mysql_start.bat`).
    - By default, XAMPP runs MySQL on port `3306` with user `root` and an empty password.
