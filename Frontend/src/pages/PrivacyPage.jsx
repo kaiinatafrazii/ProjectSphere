@@ -28,7 +28,7 @@ export default function PrivacyPage() {
         <h2>Your choices</h2>
         <p>
           You can stop using the service at any time. For a privacy request, use the contact form on the
-          <a href="/#contact"> Contact section</a>.
+          <a href="/contact"> Contact section</a>.
         </p>
         <h2>Policy changes</h2>
         <p>Material updates will be reflected on this page with a revised update date.</p>

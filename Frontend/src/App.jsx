@@ -158,8 +158,8 @@ export default function App() {
           <Route index element={<HomePage />} />
           <Route path="discover" element={<DiscoverPage />} />
           <Route path="explore" element={<Navigate to="/discover" replace />} />
-          <Route path="about" element={<Navigate to="/#about" replace />} />
-          <Route path="contact" element={<Navigate to="/#contact" replace />} />
+          <Route path="about" element={<Navigate to="/" state={{ scrollTo: 'about' }} replace />} />
+          <Route path="contact" element={<Navigate to="/" state={{ scrollTo: 'contact' }} replace />} />
           <Route path="projects/:id" element={<ProjectDetailsPage />} />
           <Route path="creators/:id" element={<CreatorProfilePage />} />
           <Route path="login" element={<GuestRoute><LoginPage /></GuestRoute>} />

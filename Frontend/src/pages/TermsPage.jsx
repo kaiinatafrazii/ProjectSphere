@@ -26,7 +26,7 @@ export default function TermsPage() {
           uninterrupted availability or that user-submitted content will always remain accessible.
         </p>
         <h2>Contact</h2>
-        <p>Questions about these terms can be sent using the contact form on the <a href="/#contact">Contact section</a>.</p>
+        <p>Questions about these terms can be sent using the contact form on the <a href="/contact">Contact section</a>.</p>
       </article>
     </div>
   );

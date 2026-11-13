@@ -27,7 +27,27 @@ export default function Layout() {
 
   useEffect(() => {
     setMenuOpen(false);
-  }, [location.pathname, location.hash]);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (location.pathname === '/' && location.hash) {
+      navigate('/', { replace: true });
+      window.scrollTo({ top: 0, behavior: 'auto' });
+      return undefined;
+    }
+
+    const sectionId = location.pathname === '/' ? location.state?.scrollTo : '';
+    if (!sectionId) return undefined;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const timer = window.setTimeout(() => {
+      if (sectionId === 'home') {
+        window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
+      } else {
+        document.getElementById(sectionId)?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' });
+      }
+    }, 50);
+    return () => window.clearTimeout(timer);
+  }, [location.pathname, location.hash, location.state, navigate]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -83,14 +103,15 @@ export default function Layout() {
     setMenuOpen(false);
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (location.pathname !== '/') {
-      navigate(`/#${id}`);
-      window.setTimeout(() => {
-        document.getElementById(id)?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' });
-      }, 50);
+      navigate('/', { state: { scrollTo: id } });
       return;
     }
 
-    navigate(`/#${id}`);
+    if (location.hash) navigate('/', { replace: true });
+    if (id === 'home') {
+      window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
+      return;
+    }
     document.getElementById(id)?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' });
   };
 
@@ -120,7 +141,7 @@ export default function Layout() {
       ) : (
         <header ref={headerRef} className={scrolled ? 'topbar is-scrolled' : 'topbar'}>
           <div className="container nav-wrap">
-            <NavLink to="/" end className="brand" aria-label="ProjectSphere home">
+            <NavLink to="/" end className="brand" aria-label="ProjectSphere home" onClick={(event) => navigateToSection(event, 'home')}>
               <img className="brand-mark-image" src="/images/projectsphere-logo.svg" alt="ProjectSphere" />
             </NavLink>
 
@@ -141,7 +162,7 @@ export default function Layout() {
               {location.pathname === '/' && landingSections.map(([id, label]) => (
                 <a
                   key={id}
-                  href={`/#${id}`}
+                  href="/"
                   className={activeSection === id ? 'active' : undefined}
                   aria-current={activeSection === id ? 'location' : undefined}
                   onClick={(event) => navigateToSection(event, id)}
@@ -185,14 +206,14 @@ export default function Layout() {
       {!isAuthRoute ? (
         <footer className="site-footer">
           <div className="container footer-content">
-            <NavLink to="/" className="brand" aria-label="ProjectSphere home">
+            <NavLink to="/" className="brand" aria-label="ProjectSphere home" onClick={(event) => navigateToSection(event, 'home')}>
               <img className="brand-mark-image" src="/images/projectsphere-logo.svg" alt="ProjectSphere" />
             </NavLink>
             <p>Discover, publish, and improve technical work together.</p>
             <nav aria-label="Footer navigation">
               <Link to="/discover">Explore projects</Link>
               {landingSections.map(([id, label]) => (
-                <a key={id} href={`/#${id}`} onClick={(event) => navigateToSection(event, id)}>{label}</a>
+                <a key={id} href="/" onClick={(event) => navigateToSection(event, id)}>{label}</a>
               ))}
               <Link to="/privacy">Privacy Policy</Link>
               <Link to="/terms">Terms &amp; Conditions</Link>
