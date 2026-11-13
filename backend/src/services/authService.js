@@ -56,7 +56,7 @@ export async function isSessionActive(sessionId, userId) {
     `SELECT s.* FROM auth_sessions s
      JOIN users u ON u.id = s.user_id
      WHERE s.id = ? AND s.revoked_at IS NULL
-       AND datetime(s.expires_at) > CURRENT_TIMESTAMP
+       AND s.expires_at > CURRENT_TIMESTAMP
        AND u.account_status = 'active'`,
     [sessionId]
   );

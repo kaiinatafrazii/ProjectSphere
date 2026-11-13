@@ -104,7 +104,7 @@ export async function requestPasswordReset(req, res) {
           );
           await connection.execute(
             'INSERT INTO password_reset_tokens (id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)',
-            [generateId(), user.id, tokenHash, new Date(Date.now() + 30 * 60 * 1000).toISOString()]
+            [generateId(), user.id, tokenHash, new Date(Date.now() + 30 * 60 * 1000)]
           );
           await connection.commit();
         } catch (error) {
@@ -161,7 +161,7 @@ export async function resetPassword(req, res) {
       `SELECT t.id, t.user_id AS userId FROM password_reset_tokens t
        JOIN users u ON u.id = t.user_id
        WHERE t.token_hash = ? AND t.consumed_at IS NULL
-         AND datetime(t.expires_at) > CURRENT_TIMESTAMP
+         AND t.expires_at > CURRENT_TIMESTAMP
          AND u.account_status = 'active'`,
       [tokenHash]
     );

@@ -12,11 +12,11 @@ export async function listProjects(filters = {}) {
     params.push(category);
   }
   if (technology) {
-    clauses.push('EXISTS (SELECT 1 FROM json_each(projects.tech_stack) AS tech WHERE tech.value = ? COLLATE NOCASE)');
+    clauses.push('JSON_CONTAINS(projects.tech_stack, JSON_QUOTE(?))');
     params.push(technology);
   }
   if (search) {
-    clauses.push('(title LIKE ? OR tagline LIKE ? OR summary LIKE ? OR overview LIKE ? OR tech_stack LIKE ?)');
+    clauses.push('(title LIKE ? OR tagline LIKE ? OR summary LIKE ? OR overview LIKE ? OR CAST(tech_stack AS CHAR) LIKE ?)');
     const term = `%${search}%`;
     params.push(term, term, term, term, term);
   }
@@ -34,7 +34,7 @@ export async function listProjects(filters = {}) {
     oldest: 'created_at ASC',
     rating: '(SELECT AVG(rating) FROM project_reviews WHERE project_id = projects.id) DESC, created_at DESC',
     popular: 'views DESC, likes DESC, created_at DESC',
-    title: 'title COLLATE NOCASE ASC',
+    title: 'title ASC',
   }[filters.sort] || 'created_at DESC';
   const [rows, countRows] = await Promise.all([
     query(`SELECT * FROM projects WHERE ${where} ORDER BY ${sortOrder} LIMIT ? OFFSET ?`, [...params, limit, offset]),
@@ -45,17 +45,25 @@ export async function listProjects(filters = {}) {
 
 export async function getProjectFilterOptions() {
   const categories = await query(
-    "SELECT DISTINCT category FROM projects WHERE status IN ('published', 'featured') ORDER BY category COLLATE NOCASE"
+    "SELECT DISTINCT category FROM projects WHERE status IN ('published', 'featured') ORDER BY category"
   );
-  const technologies = await query(
-    `SELECT DISTINCT tech.value AS technology
-     FROM projects, json_each(projects.tech_stack) AS tech
-     WHERE projects.status IN ('published', 'featured') AND tech.type = 'text'
-     ORDER BY tech.value COLLATE NOCASE`
+  const projectRows = await query(
+    "SELECT tech_stack FROM projects WHERE status IN ('published', 'featured') AND tech_stack IS NOT NULL"
   );
+  const technologyOptions = new Map();
+  for (const row of projectRows) {
+    const techStack = Array.isArray(row.tech_stack) ? row.tech_stack : JSON.parse(row.tech_stack);
+    for (const technology of techStack) {
+      if (typeof technology === 'string') {
+        const key = technology.toLocaleLowerCase();
+        if (!technologyOptions.has(key)) technologyOptions.set(key, technology);
+      }
+    }
+  }
+  const technologies = [...technologyOptions.values()].sort((first, second) => first.localeCompare(second));
   return {
     categories: categories.map((row) => row.category),
-    technologies: technologies.map((row) => row.technology),
+    technologies,
   };
 }
 
@@ -65,7 +73,7 @@ export async function findProjectById(id) {
 }
 
 export async function incrementProjectViews(id) {
-  return query('UPDATE projects SET views = views + 1 WHERE id = ?', [id]);
+  return query('UPDATE projects SET views = views + 1, updated_at = updated_at WHERE id = ?', [id]);
 }
 
 export async function listProjectReviews(projectId) {
@@ -102,9 +110,9 @@ export async function createReview({ id, projectId, userId, rating, comment }) {
   const result = await query(
     `INSERT INTO project_reviews (id, project_id, user_id, rating, comment)
      VALUES (?, ?, ?, ?, ?)
-     ON CONFLICT (project_id, user_id) DO UPDATE SET
-       rating = excluded.rating,
-       comment = excluded.comment,
+     ON DUPLICATE KEY UPDATE
+       rating = VALUES(rating),
+       comment = VALUES(comment),
        updated_at = CURRENT_TIMESTAMP`,
     [id, projectId, userId, rating, comment]
   );

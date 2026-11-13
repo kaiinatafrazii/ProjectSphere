@@ -1,5 +1,5 @@
-import { randomUUID } from 'node:crypto';
 import dotenv from 'dotenv';
+import { randomUUID } from 'node:crypto';
 
 dotenv.config();
 
@@ -17,45 +17,56 @@ async function setupDevelopmentAdmin() {
     throw new Error('Set ADMIN_PASSWORD to 8-72 characters before setup.');
   }
 
-  const [{ db }, { hashPassword }] = await Promise.all([
+  const [{ closeDatabase, initializeDatabase, pool }, { hashPassword }] = await Promise.all([
     import('../src/config/db.js'),
     import('../src/services/authService.js'),
   ]);
   try {
+    await initializeDatabase();
     const passwordHash = await hashPassword(password);
-    const existing = db.prepare('SELECT id FROM users WHERE email = ? COLLATE NOCASE').get(email);
-    const setupAccount = db.transaction(() => {
+    const connection = await pool.getConnection();
+    let updated = false;
+    try {
+      await connection.beginTransaction();
+      const [existingRows] = await connection.execute(
+        'SELECT id FROM users WHERE email = ? FOR UPDATE',
+        [email]
+      );
+      const existing = existingRows[0];
       if (existing) {
-        db.prepare(
+        await connection.execute(
           `UPDATE users
            SET role = 'admin', password_hash = ?, updated_at = CURRENT_TIMESTAMP
-           WHERE id = ?`
-        ).run(passwordHash, existing.id);
-        db.prepare(
-          'UPDATE auth_sessions SET revoked_at = CURRENT_TIMESTAMP WHERE user_id = ? AND revoked_at IS NULL'
-        ).run(existing.id);
-        return;
+           WHERE id = ?`,
+          [passwordHash, existing.id]
+        );
+        await connection.execute(
+          'UPDATE auth_sessions SET revoked_at = CURRENT_TIMESTAMP WHERE user_id = ? AND revoked_at IS NULL',
+          [existing.id]
+        );
+        updated = true;
+      } else {
+        await connection.execute(
+          `INSERT INTO users (id, name, email, password_hash, role)
+           VALUES (?, 'ProjectSphere Admin', ?, ?, 'admin')`,
+          [randomUUID(), email, passwordHash]
+        );
       }
-
-      const id = randomUUID();
-      db.prepare(
-        `INSERT INTO users (id, name, email, password_hash, role)
-         VALUES (?, 'ProjectSphere Admin', ?, ?, 'admin')`
-      ).run(id, email, passwordHash);
-    });
-    setupAccount();
-    if (existing) {
-      console.log(`Updated the development administrator account ${email}.`);
-      return;
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
     }
-    console.log(`Created the development administrator account ${email}.`);
+
+    console.log(`${updated ? 'Updated' : 'Created'} the development administrator account ${email}.`);
   } finally {
-    if (db.open) db.close();
+    await closeDatabase();
   }
 }
 
-setupDevelopmentAdmin()
-  .catch((error) => {
-    console.error(`Development admin setup failed: ${error.message}`);
-    process.exitCode = 1;
-  });
+setupDevelopmentAdmin().catch((error) => {
+  console.error(`Development admin setup failed: ${error.message}`);
+  process.exitCode = 1;
+});

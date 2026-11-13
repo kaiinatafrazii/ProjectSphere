@@ -60,7 +60,7 @@ The platform features a modern React frontend, a Node.js and Express REST API, s
 ### Contact
 - Contact form with backend validation.
 - Rate-limited contact submissions.
-- Persistent contact-message storage in SQLite.
+- Persistent contact-message storage in MySQL.
 
 ## Tech Stack
 
@@ -69,7 +69,7 @@ The platform features a modern React frontend, a Node.js and Express REST API, s
 | Frontend | React.js, Vite, React Router |
 | Styling | CSS Modules, custom CSS |
 | Backend | Node.js, Express.js |
-| Database | SQLite (`better-sqlite3`) |
+| Database | MySQL (`mysql2` connection pool) via XAMPP / MariaDB / Cloud MySQL |
 | Authentication | JWT, HttpOnly cookies, bcrypt |
 | API | REST |
 | Testing | Backend test suite via npm |
@@ -101,6 +101,7 @@ Install the following before running the application:
 - Node.js 20 or later.
 - npm 9 or later.
 - Git.
+- MySQL / MariaDB via **XAMPP** (or standalone MySQL 8+ server).
 
 Verify the installations:
 
@@ -158,27 +159,42 @@ For the backend:
 cd ../backend
 ```
 
-Copy `.env.example` to `.env` and configure a strong JWT secret, SQLite database path, server port, and frontend origin.
+Copy `.env.example` to `.env` and configure your MySQL database credentials, JWT secret, server port, and frontend origin.
 
 **Important:** Use the actual variable names defined in `backend/.env.example`. Do not commit real secrets or production credentials.
 
-### 4. Initialize SQLite
+### 4. Database Setup with XAMPP MySQL
 
-The backend creates `backend/data/projectsphere.sqlite` and applies the versioned SQLite schema automatically on first startup. Set `SQLITE_DB_PATH` in `backend/.env` to use a different persistent file. SQLite data, private ZIP archives, WAL, SHM, and journal files are excluded from Git and are not served publicly. Private source archives default to `backend/data/private-source-code`; `SOURCE_CODE_STORAGE_DIR` can override this with a directory outside public web directories.
+1. **Start MySQL in XAMPP:**
+   - Open the **XAMPP Control Panel** and click **Start** next to MySQL (or run `C:\xampp\mysql_start.bat`).
+   - By default, XAMPP runs MySQL on port `3306` with user `root` and an empty password.
 
-### 5. Import existing MySQL data (if applicable)
+2. **Configure backend `.env`:**
+   ```env
+   DB_HOST=127.0.0.1
+   DB_PORT=3306
+   DB_USER=root
+   DB_PASSWORD=
+   DB_NAME=projectsphere_app
+   DB_CONNECTION_LIMIT=10
+   DB_SSL=false
+   ```
 
-The backend no longer connects to MySQL during normal operation. Existing MySQL tables are not deleted or changed. Back up your source database, configure its connection values in `backend/.env`, then run this explicit one-time import from `backend/`:
+3. **Run Migrations:**
+   The backend automatically ensures the database exists and creates all required tables on startup. You can also run migrations explicitly:
+   ```powershell
+   npm run migrate
+   ```
 
-```powershell
-npm run migrate:mysql
-```
+4. **(Optional) Seed Development Data:**
+   Populate the database with sample projects for development:
+   ```powershell
+   npm run seed:dev
+   ```
 
-The importer reads supported ProjectSphere tables and inserts them into SQLite inside one transaction. Duplicate review pairs or invalid legacy rows fail and roll back the import; resolve them against a backup and retry. Existing SQLite records with matching IDs are left unchanged. If MySQL was not configured or available, no data is silently invented or discarded.
+### 5. Create an Administrator Account
 
-### 6. Create an Administrator Account
-
-The development-only command below creates or updates an administrator account. It hashes the password, uses a transaction, and revokes existing sessions when updating an account. It refuses to run when `NODE_ENV=production`.
+The development-only command below creates or updates an administrator account in MySQL. It hashes the password, uses a transaction, and revokes existing sessions when updating an account. It refuses to run when `NODE_ENV=production`.
 
 ```powershell
 Set-Location backend
@@ -189,7 +205,7 @@ Remove-Item Env:ADMIN_EMAIL
 Remove-Item Env:ADMIN_PASSWORD
 ```
 
-Use a unique development password, change it after first sign-in, and never reuse it in a deployed environment. The command accepts `ADMIN_EMAIL` and `ADMIN_PASSWORD`; credentials are not stored in source code or the environment example.
+Use a unique development password, change it after first sign-in, and never reuse it in a deployed environment. Credentials can also be configured in `backend/.env` using `ADMIN_EMAIL` and `ADMIN_PASSWORD`.
 
 Do not expose an admin role selector on public registration or profile forms. Administrative privileges must be assigned through a trusted process.
 
@@ -382,15 +398,44 @@ npm start
 
 Before deployment:
 
-- Configure a persistent SQLite path and protect database backups.
-- Set all required environment variables.
+- Configure MySQL connection variables (`DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`).
+- For Render or cloud-hosted MySQL databases, set `DB_SSL=true` and `DB_SSL_REJECT_UNAUTHORIZED=false` (or provide `DB_SSL_CA`).
+- Set all required environment variables (`JWT_SECRET`, `NODE_ENV=production`, `FRONTEND_URL`).
 - Use HTTPS.
 - Configure the correct frontend origin and backend API URL.
 - Configure secure cookie settings for the production domain.
-- Back up the database and test migrations.
+- Run `npm run provision:admin` to initialize the designated production administrator.
 - Ensure environment files and secrets are excluded from Git.
 - Configure suitable logging, monitoring, and rate limiting.
 - Verify that the frontend sitemap and canonical URLs use the actual deployed domain.
+
+### Production Deployment on Render
+
+1. **Deploying the Backend on Render:**
+   - Create a **Web Service** pointing to the repository's `backend` directory.
+   - Build Command: `npm install`
+   - Start Command: `npm start`
+   - Add the following Environment Variables in the Render dashboard:
+     ```env
+     NODE_ENV=production
+     PORT=5000
+     JWT_SECRET=<strong-random-32-plus-char-secret>
+     FRONTEND_URL=https://<your-frontend-domain>
+     DB_HOST=<render-or-cloud-mysql-host>
+     DB_PORT=3306
+     DB_USER=<mysql-user>
+     DB_PASSWORD=<mysql-password>
+     DB_NAME=<mysql-database-name>
+     DB_SSL=true
+     DB_SSL_REJECT_UNAUTHORIZED=false
+     ```
+   - On startup, the backend automatically connects to MySQL, checks table definitions, and applies all required migrations.
+
+2. **Deploying the Frontend:**
+   - Create a **Static Site** on Render (or Vercel) pointing to `Frontend`.
+   - Build Command: `npm run build`
+   - Publish Directory: `dist`
+   - Set `VITE_API_URL=https://<your-backend-domain>/api`
 
 Set `VITE_SITE_URL` to the real public frontend origin when the frontend build requires it for sitemap and canonical metadata generation. Do not use a placeholder domain in production.
 
@@ -407,12 +452,11 @@ Set `VITE_SITE_URL` to the real public frontend origin when the frontend build r
 
 ## Known Limitations & Configuration
 
-- Notifications and account settings are not implemented. Admin profile, review, contact-message, and moderation-history routes are available.
-- MySQL configuration is needed only for the explicit migration importer.
-- The SQLite database file defaults to `backend/data/projectsphere.sqlite`; set `SQLITE_DB_PATH` for a deployment-specific path.
-- Profile photos support JPG, PNG, and WebP uploads; they are resized in the browser and saved as JPEG image data in the account's SQLite record.
+- Notifications and account settings are fully supported via MySQL models.
+- Backend runs with `mysql2` and a connection pool (`DB_CONNECTION_LIMIT=10`).
+- Profile photos support JPG, PNG, and WebP uploads; they are resized in the browser and stored in MySQL user records.
 - Contact rate limiting that uses an in-memory store is not shared across multiple backend instances.
-- Production deployment requires a persistent, properly configured database.
+- Production deployment requires a persistent, properly configured MySQL database.
 - Analytics and social integrations should only be documented as active after they have been configured and verified.
 
 ## Contributing

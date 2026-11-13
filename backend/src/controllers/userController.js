@@ -107,7 +107,7 @@ export async function updateOwnProfile(req, res) {
   try {
     if (Object.hasOwn(normalizedProfileFields, 'username') && normalizedProfileFields.username) {
       const [existingNames] = await pool.execute(
-        'SELECT id FROM users WHERE username = ? COLLATE NOCASE AND id <> ?',
+        'SELECT id FROM users WHERE username = ? AND id <> ?',
         [normalizedProfileFields.username, req.user.id]
       );
       if (existingNames.length) return sendError(res, 409, 'That username is already in use.');

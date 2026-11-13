@@ -31,9 +31,9 @@ export async function updateUserPreferences(req, res) {
     await pool.execute(
       `INSERT INTO user_preferences (user_id, email_notifications, product_updates)
        VALUES (?, ?, ?)
-       ON CONFLICT(user_id) DO UPDATE SET
-         email_notifications = excluded.email_notifications,
-         product_updates = excluded.product_updates,
+       ON DUPLICATE KEY UPDATE
+         email_notifications = VALUES(email_notifications),
+         product_updates = VALUES(product_updates),
          updated_at = CURRENT_TIMESTAMP`,
       [req.user.id, emailNotifications ? 1 : 0, productUpdates ? 1 : 0]
     );
@@ -103,7 +103,7 @@ export async function requestEmailChange(req, res) {
     );
     await pool.execute(
       'INSERT INTO email_change_tokens (id, user_id, new_email, token_hash, expires_at) VALUES (?, ?, ?, ?, ?)',
-      [generateId(), req.user.id, email, tokenHash, new Date(Date.now() + 30 * 60 * 1000).toISOString()]
+      [generateId(), req.user.id, email, tokenHash, new Date(Date.now() + 30 * 60 * 1000)]
     );
 
     const frontendOrigin = new URL(process.env.FRONTEND_URL || 'http://localhost:5173');
@@ -139,7 +139,7 @@ export async function confirmEmailChange(req, res) {
       `SELECT t.id, t.user_id AS userId, t.new_email AS newEmail FROM email_change_tokens t
        JOIN users u ON u.id = t.user_id
        WHERE t.token_hash = ? AND t.consumed_at IS NULL
-         AND datetime(t.expires_at) > CURRENT_TIMESTAMP AND u.account_status = 'active'`,
+         AND t.expires_at > CURRENT_TIMESTAMP AND u.account_status = 'active'`,
       [tokenHash]
     );
     if (!rows.length) {
@@ -161,7 +161,7 @@ export async function confirmEmailChange(req, res) {
     return sendSuccess(res, { message: 'Email updated. Sign in again with your new email address.' });
   } catch (error) {
     await connection.rollback();
-    if (error.code === 'SQLITE_CONSTRAINT_UNIQUE' || error.code === 'ER_DUP_ENTRY') {
+    if (error.code === 'ER_DUP_ENTRY') {
       return sendError(res, 409, 'That email address is already associated with an account.');
     }
     console.error('Email change confirmation failed:', error);

@@ -1,106 +1,116 @@
-import Database from 'better-sqlite3';
 import dotenv from 'dotenv';
-import { mkdirSync, readFileSync } from 'node:fs';
+import mysql from 'mysql2/promise';
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 dotenv.config();
 
 const backendDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const configuredPath = process.env.SQLITE_DB_PATH || path.join(backendDirectory, 'data', 'projectsphere.sqlite');
-const databasePath = configuredPath === ':memory:'
-  ? configuredPath
-  : path.isAbsolute(configuredPath)
-    ? configuredPath
-    : path.resolve(backendDirectory, configuredPath);
+const migrationsDirectory = path.join(backendDirectory, 'migrations', 'mysql');
+const migrations = ['001_initial.sql'];
 
-if (databasePath !== ':memory:') {
-  mkdirSync(path.dirname(databasePath), { recursive: true });
-}
+export const pool = mysql.createPool({
+  host: process.env.DB_HOST || '127.0.0.1',
+  port: Number(process.env.DB_PORT || 3306),
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'projectsphere_app',
+  waitForConnections: true,
+  connectionLimit: Number(process.env.DB_CONNECTION_LIMIT || 10),
+  queueLimit: 0,
+  charset: 'utf8mb4',
+  timezone: 'Z',
+  dateStrings: true,
+  decimalNumbers: true,
+  ssl: process.env.DB_SSL === 'true'
+    ? {
+        ca: process.env.DB_SSL_CA || undefined,
+        rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED === 'true',
+      }
+    : undefined,
+});
 
-export const db = new Database(databasePath);
-db.pragma('foreign_keys = ON');
-db.pragma('busy_timeout = 5000');
-if (databasePath !== ':memory:') db.pragma('journal_mode = WAL');
+pool.on('connection', (connection) => {
+  connection.query("SET SESSION time_zone = '+00:00'", (error) => {
+    if (error) {
+      console.error('Unable to configure the MySQL session timezone:', error);
+      connection.destroy();
+    }
+  });
+});
 
-const migrationsDirectory = path.join(backendDirectory, 'migrations', 'sqlite');
-const migrations = [
-  '001_initial.sql',
-  '002_contact_message_read.sql',
-  '003_project_source_code.sql',
-  '004_platform_workflows.sql',
-  '005_view_tracking.sql',
-  '006_account_settings.sql',
-];
-let currentVersion = db.pragma('user_version', { simple: true });
-for (let index = currentVersion; index < migrations.length; index += 1) {
-  const migration = migrations[index];
-  const sql = readFileSync(path.join(migrationsDirectory, migration), 'utf8');
-  try {
-    db.transaction(() => {
-      db.exec(sql);
-      db.pragma(`user_version = ${index + 1}`);
-    })();
-  } catch (error) {
-    db.close();
-    throw new Error(`Unable to apply SQLite migration ${migration}: ${error.message}`, { cause: error });
+let initialization;
+
+export async function initializeDatabase() {
+  if (!initialization) {
+    initialization = (async () => {
+      const databaseName = process.env.DB_NAME || 'projectsphere_app';
+      try {
+        const rootConnection = await mysql.createConnection({
+          host: process.env.DB_HOST || '127.0.0.1',
+          port: Number(process.env.DB_PORT || 3306),
+          user: process.env.DB_USER || 'root',
+          password: process.env.DB_PASSWORD || '',
+          ssl: process.env.DB_SSL === 'true'
+            ? {
+                ca: process.env.DB_SSL_CA || undefined,
+                rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED === 'true',
+              }
+            : undefined,
+        });
+        await rootConnection.query(
+          `CREATE DATABASE IF NOT EXISTS \`${databaseName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
+        );
+        await rootConnection.end();
+      } catch (error) {
+        // Cloud-hosted databases (e.g. Render) may pre-create the DB or restrict CREATE DATABASE.
+      }
+
+      const connection = await pool.getConnection();
+      try {
+        await connection.execute(
+          `CREATE TABLE IF NOT EXISTS schema_migrations (
+            version VARCHAR(191) NOT NULL PRIMARY KEY,
+            applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+        );
+        const [appliedRows] = await connection.execute('SELECT version FROM schema_migrations');
+        const appliedVersions = new Set(appliedRows.map((row) => row.version));
+
+        for (const migration of migrations) {
+          if (appliedVersions.has(migration)) continue;
+          const sql = await readFile(path.join(migrationsDirectory, migration), 'utf8');
+          for (const statement of sql.split(';').map((part) => part.trim()).filter(Boolean)) {
+            await connection.query(statement);
+          }
+          await connection.execute('INSERT INTO schema_migrations (version) VALUES (?)', [migration]);
+        }
+      } finally {
+        connection.release();
+      }
+    })().catch((error) => {
+      initialization = undefined;
+      throw error;
+    });
   }
+  return initialization;
 }
-
-function normalizeParameters(params) {
-  return params.map((value) => (value instanceof Date ? value.toISOString() : value));
-}
-
-function executeStatement(sql, params = []) {
-  const statement = db.prepare(sql);
-  const values = normalizeParameters(params);
-  if (statement.reader) return statement.all(...values);
-
-  const result = statement.run(...values);
-  return {
-    affectedRows: result.changes,
-    insertId: Number(result.lastInsertRowid),
-  };
-}
-
-export const pool = {
-  async execute(sql, params = []) {
-    return [executeStatement(sql, params), []];
-  },
-
-  async getConnection() {
-    let active = false;
-    return {
-      async beginTransaction() {
-        db.exec('BEGIN IMMEDIATE');
-        active = true;
-      },
-      async execute(sql, params = []) {
-        return [executeStatement(sql, params), []];
-      },
-      async commit() {
-        if (active) db.exec('COMMIT');
-        active = false;
-      },
-      async rollback() {
-        if (active) db.exec('ROLLBACK');
-        active = false;
-      },
-      release() {},
-    };
-  },
-};
 
 export async function query(sql, params = []) {
-  const [result] = await pool.execute(sql, params);
-  return result;
+  const [rows] = await pool.execute(sql, params);
+  return rows;
 }
 
 export async function isDatabaseAvailable() {
   try {
-    db.prepare('SELECT 1').get();
+    await pool.execute('SELECT 1');
     return true;
   } catch {
     return false;
   }
+}
+
+export async function closeDatabase() {
+  await pool.end();
 }

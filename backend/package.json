@@ -10,14 +10,14 @@
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "test": "node --import ./tests/setup.js --test",
-    "migrate:mysql": "node scripts/import-mysql.js",
+    "migrate": "node scripts/migrate.js",
+    "migrate:mysql": "node scripts/migrate.js",
     "seed:dev": "node seeds/seed-development.js",
     "setup:admin": "node scripts/setup-development-admin.js",
     "provision:admin": "node scripts/provision-production-admin.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
-    "better-sqlite3": "^12.11.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",

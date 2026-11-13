@@ -172,12 +172,12 @@ export async function uploadProjectSourceCode(req, res) {
           `INSERT INTO project_source_code
            (id, project_id, owner_id, storage_key, original_filename, size_bytes, sha256, submitted_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-           ON CONFLICT(project_id) DO UPDATE SET
-             owner_id = excluded.owner_id,
-             storage_key = excluded.storage_key,
-             original_filename = excluded.original_filename,
-             size_bytes = excluded.size_bytes,
-             sha256 = excluded.sha256,
+           ON DUPLICATE KEY UPDATE
+             owner_id = VALUES(owner_id),
+             storage_key = VALUES(storage_key),
+             original_filename = VALUES(original_filename),
+             size_bytes = VALUES(size_bytes),
+             sha256 = VALUES(sha256),
              submitted_at = CURRENT_TIMESTAMP`,
           [randomUUID(), project.id, req.user.id, storageKey, originalFilename, req.file.size, sha256]
         );

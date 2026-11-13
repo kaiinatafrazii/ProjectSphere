@@ -24,7 +24,7 @@ export async function submitProjectReport(req, res) {
     );
     return sendSuccess(res, { message: 'Your report was sent to the moderation team.' }, 201);
   } catch (error) {
-    if (error.code === 'SQLITE_CONSTRAINT_UNIQUE' || error.code === 'ER_DUP_ENTRY') {
+    if (error.code === 'ER_DUP_ENTRY') {
       return sendError(res, 409, 'You have already reported this project.');
     }
     console.error('Project report submission failed:', error);

@@ -322,14 +322,14 @@ export async function listAdminUsers(req, res) {
     ? req.query.createdAfter
     : '';
   if (createdAfter) {
-    clauses.push('date(u.created_at) >= date(?)');
+    clauses.push('DATE(u.created_at) >= DATE(?)');
     params.push(createdAfter);
   }
   const createdBefore = typeof req.query.createdBefore === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(req.query.createdBefore)
     ? req.query.createdBefore
     : '';
   if (createdBefore) {
-    clauses.push('date(u.created_at) <= date(?)');
+    clauses.push('DATE(u.created_at) <= DATE(?)');
     params.push(createdBefore);
   }
   const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
@@ -347,7 +347,7 @@ export async function listAdminUsers(req, res) {
        FROM users u LEFT JOIN projects p ON p.user_id = u.id
        ${where}
        GROUP BY u.id
-       ORDER BY u.created_at ${sort}, u.name COLLATE NOCASE ASC LIMIT ? OFFSET ?`,
+       ORDER BY u.created_at ${sort}, u.name ASC LIMIT ? OFFSET ?`,
       [...params, limit, offset]
     );
     return sendSuccess(res, {
@@ -607,16 +607,16 @@ export async function changeAdminPassword(req, res) {
 export async function getAdminAnalytics(_req, res) {
   try {
     const [userRows] = await pool.execute(
-      "SELECT strftime('%Y-%m', created_at) AS month, COUNT(*) AS count FROM users WHERE created_at >= date('now', 'start of month', '-11 months') GROUP BY month"
+      "SELECT DATE_FORMAT(created_at, '%Y-%m') AS month, COUNT(*) AS count FROM users WHERE created_at >= DATE_FORMAT(DATE_SUB(CURRENT_DATE, INTERVAL 11 MONTH), '%Y-%m-01') GROUP BY month"
     );
     const [submissionRows] = await pool.execute(
-      "SELECT strftime('%Y-%m', created_at) AS month, COUNT(*) AS count FROM projects WHERE created_at >= date('now', 'start of month', '-11 months') GROUP BY month"
+      "SELECT DATE_FORMAT(created_at, '%Y-%m') AS month, COUNT(*) AS count FROM projects WHERE created_at >= DATE_FORMAT(DATE_SUB(CURRENT_DATE, INTERVAL 11 MONTH), '%Y-%m-01') GROUP BY month"
     );
     const [approvalRows] = await pool.execute(
-      "SELECT strftime('%Y-%m', created_at) AS month, COUNT(*) AS count FROM project_moderation_history WHERE action = 'approved' AND created_at >= date('now', 'start of month', '-11 months') GROUP BY month"
+      "SELECT DATE_FORMAT(created_at, '%Y-%m') AS month, COUNT(*) AS count FROM project_moderation_history WHERE action = 'approved' AND created_at >= DATE_FORMAT(DATE_SUB(CURRENT_DATE, INTERVAL 11 MONTH), '%Y-%m-01') GROUP BY month"
     );
     const [categoryRows] = await pool.execute(
-      "SELECT category, COUNT(*) AS count FROM projects WHERE status IN ('published', 'featured') GROUP BY category ORDER BY count DESC, category COLLATE NOCASE ASC"
+      "SELECT category, COUNT(*) AS count FROM projects WHERE status IN ('published', 'featured') GROUP BY category ORDER BY count DESC, category ASC"
     );
     const [summaryRows] = await pool.execute(
       `SELECT

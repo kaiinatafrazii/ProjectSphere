@@ -1,6 +1,5 @@
 import dotenv from 'dotenv';
 import { v4 as uuidv4 } from 'uuid';
-import { db } from '../src/config/db.js';
 
 dotenv.config();
 
@@ -10,7 +9,7 @@ const sampleProjects = [
     title: 'PulseBoard',
     tagline: 'A thoughtful dashboard for shipping healthier team rituals.',
     category: 'Productivity',
-    techStack: ['React', 'Node.js', 'SQLite'],
+    techStack: ['React', 'Node.js', 'MySQL'],
     summary: 'A collaborative planning tool designed to help small teams turn goals into visible weekly momentum.',
     overview: 'PulseBoard combines goal tracking, sprint planning, and team check-ins in one calm workspace tailored for distributed product teams.',
     status: 'featured',
@@ -44,43 +43,65 @@ const sampleProjects = [
   },
 ];
 
-if (!ownerId) {
-  console.error('Set DEV_SEED_OWNER_ID to an existing account ID before running the optional development seed.');
-  process.exitCode = 1;
-} else {
-  const owner = db.prepare('SELECT id FROM users WHERE id = ?').get(ownerId);
-  if (!owner) {
-    console.error('The configured development seed owner does not exist.');
-    process.exitCode = 1;
-  } else {
-    const insertProject = db.prepare(`
-      INSERT INTO projects
-      (id, user_id, title, tagline, category, tech_stack, summary, overview, repo_url, live_url, screenshot_url, likes, views, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)
-    `);
+async function seedDevelopmentProjects() {
+  const { closeDatabase, initializeDatabase, pool } = await import('../src/config/db.js');
+  try {
+    await initializeDatabase();
+    const connection = await pool.getConnection();
+    const seededProjects = [];
+    try {
+      await connection.beginTransaction();
+      let targetOwnerId = ownerId;
+      if (!targetOwnerId) {
+        const [users] = await connection.execute('SELECT id FROM users ORDER BY created_at ASC LIMIT 1');
+        targetOwnerId = users[0]?.id;
+      }
+      if (!targetOwnerId) {
+        throw new Error('Create an account or run npm run setup:admin before seeding development projects.');
+      }
 
-    const seededProjects = sampleProjects.map((project) => {
-      const id = uuidv4();
-      insertProject.run(
-        id,
-        ownerId,
-        project.title,
-        project.tagline,
-        project.category,
-        JSON.stringify(project.techStack),
-        project.summary,
-        project.overview,
-        project.repoUrl,
-        project.liveUrl,
-        project.screenshotUrl,
-        project.status,
-      );
-      return { id, title: project.title, status: project.status };
-    });
+      const [owners] = await connection.execute('SELECT id FROM users WHERE id = ?', [targetOwnerId]);
+      if (!owners.length) throw new Error('The configured development seed owner does not exist.');
+
+      for (const project of sampleProjects) {
+        const id = uuidv4();
+        await connection.execute(
+          `INSERT INTO projects
+           (id, user_id, title, tagline, category, tech_stack, summary, overview, repo_url, live_url, screenshot_url, likes, views, status)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
+          [
+            id,
+            targetOwnerId,
+            project.title,
+            project.tagline,
+            project.category,
+            JSON.stringify(project.techStack),
+            project.summary,
+            project.overview,
+            project.repoUrl,
+            project.liveUrl,
+            project.screenshotUrl,
+            project.status,
+          ]
+        );
+        seededProjects.push({ id, title: project.title, status: project.status });
+      }
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
 
     console.log(`Created ${seededProjects.length} demo projects for development.`);
     seededProjects.forEach((project) => console.log(`- ${project.title} (${project.status}) -> ${project.id}`));
+  } finally {
+    await closeDatabase();
   }
 }
 
-db.close();
+seedDevelopmentProjects().catch((error) => {
+  console.error(`Development seed failed: ${error.message}`);
+  process.exitCode = 1;
+});
