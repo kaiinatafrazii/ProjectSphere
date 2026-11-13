@@ -168,7 +168,7 @@ select:focus-visible {
 .link-button,
 .filter-chip {
   border: 1px solid transparent;
-  border-radius: 5px;
+  border-radius: 12px;
   transition: none;
 }
 
@@ -178,9 +178,10 @@ select:focus-visible {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 44px;
-  padding: 0 18px;
+  min-height: 52px;
+  padding: 0 22px;
   font-weight: 600;
+  font-size: 1.02rem;
 }
 
 .primary-button {
@@ -516,6 +517,47 @@ select:focus-visible {
   margin-bottom: 26px;
 }
 
+.discover-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.discover-heading-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.discover-heading-copy h2 {
+  margin: 10px 0 0;
+  font-size: clamp(2.5rem, 5vw, 5rem);
+  line-height: 0.98;
+}
+
+.discover-dashboard-link {
+  min-width: 220px;
+  min-height: 56px;
+  padding: 0 20px;
+  font-size: 1rem;
+}
+
+.saved-empty-state {
+  margin-bottom: 36px;
+}
+
+.saved-section-title {
+  margin: 0 0 18px;
+  color: var(--navy);
+  font-size: clamp(1.65rem, 3vw, 2.2rem);
+}
+
+.saved-catalog-section {
+  margin-top: 40px;
+}
+
 .search-input,
 .stacked-form input,
 .stacked-form textarea,
@@ -532,7 +574,8 @@ select:focus-visible {
 }
 
 .search-input {
-  min-height: 52px;
+  min-height: 56px;
+  font-size: 1.05rem;
 }
 
 .category-filter {
@@ -542,10 +585,12 @@ select:focus-visible {
 }
 
 .filter-chip {
+  min-height: 42px;
   border-color: var(--line);
   background: rgba(255, 255, 255, 0.7);
-  padding: 8px 12px;
+  padding: 8px 16px;
   color: var(--muted);
+  font-size: 0.98rem;
 }
 
 .filter-chip.active {
@@ -989,6 +1034,15 @@ select:focus-visible {
     grid-template-columns: 1fr;
   }
 
+  .discover-heading {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .discover-dashboard-link {
+    width: 100%;
+  }
+
   .nav-wrap {
     flex-wrap: wrap;
     justify-content: center;
@@ -1029,6 +1083,19 @@ select:focus-visible {
     font-size: clamp(2.35rem, 11vw, 3.2rem);
   }
 
+  .discover-heading-copy h2 {
+    font-size: clamp(2.2rem, 12vw, 3.3rem);
+  }
+
+  .discover-dashboard-link,
+  .primary-button,
+  .secondary-button,
+  .filter-chip,
+  .search-input,
+  .project-sort-filter select {
+    min-height: 48px;
+  }
+
   .nav-wrap {
     gap: 12px;
   }
@@ -1048,6 +1115,26 @@ select:focus-visible {
 
   .home-search .secondary-button {
     padding: 0 13px;
+  }
+
+  .project-sort-filter {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .project-sort-filter select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .category-filter {
+    gap: 8px;
+  }
+
+  .filter-chip {
+    flex: 1 1 calc(50% - 8px);
+    justify-content: center;
+    text-align: center;
   }
 
   .featured-panel img {
@@ -2394,15 +2481,18 @@ select:focus-visible {
   align-items: center;
   gap: 10px;
   color: var(--ink);
+  font-size: 1rem;
 }
 
 .project-sort-filter select {
-  min-height: 42px;
+  min-height: 46px;
+  min-width: 180px;
   padding: 8px 12px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--panel-strong);
   color: var(--ink);
+  font-size: 1rem;
 }
 
 .public-creator-profile {

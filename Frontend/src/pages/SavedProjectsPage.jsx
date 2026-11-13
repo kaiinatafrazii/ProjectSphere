@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 import ProjectCard from '../components/ProjectCard.jsx';
 import { apiRequest } from '../services/api.js';
-import { Link } from 'react-router-dom';
 
 export default function SavedProjectsPage() {
   const [projects, setProjects] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [catalogProjects, setCatalogProjects] = useState([]);
+  const [loadingSaved, setLoadingSaved] = useState(true);
+  const [loadingCatalog, setLoadingCatalog] = useState(true);
+  const [savedError, setSavedError] = useState('');
+  const [catalogError, setCatalogError] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -15,10 +17,21 @@ export default function SavedProjectsPage() {
         if (active) setProjects(response.projects || []);
       })
       .catch((loadError) => {
-        if (active) setError(loadError.message || 'Unable to load saved projects.');
+        if (active) setSavedError(loadError.message || 'Unable to load saved projects.');
       })
       .finally(() => {
-        if (active) setLoading(false);
+        if (active) setLoadingSaved(false);
+      });
+
+    apiRequest('/projects?sort=newest&page=1&limit=12')
+      .then((response) => {
+        if (active) setCatalogProjects(response.projects || []);
+      })
+      .catch(() => {
+        if (active) setCatalogError('Unable to load projects to explore. Please try again later.');
+      })
+      .finally(() => {
+        if (active) setLoadingCatalog(false);
       });
     return () => {
       active = false;
@@ -34,29 +47,54 @@ export default function SavedProjectsPage() {
             <h1>Saved projects</h1>
             <p>Keep useful projects close and return to them anytime.</p>
           </div>
-          {loading ? <div className="empty-state" role="status">Loading saved projects…</div> : null}
-          {error ? <div className="empty-state" role="alert">{error}</div> : null}
-          {!loading && !error && !projects.length ? (
-            <div className="empty-state">
+          {loadingSaved ? <div className="empty-state" role="status">Loading saved projects…</div> : null}
+          {savedError ? <div className="empty-state" role="alert">{savedError}</div> : null}
+          {!loadingSaved && !savedError && !projects.length ? (
+            <div className="empty-state saved-empty-state">
               <strong>No saved projects yet.</strong>
-              <p>Explore the catalog and save projects you want to revisit.</p>
-              <Link to="/discover" className="primary-button">Explore projects</Link>
+              <p>Save a project from the list below and it will appear here.</p>
             </div>
           ) : null}
-          {!loading && !error && projects.length ? (
-            <div className="project-grid">
-              {projects.map((project) => (
-                <ProjectCard
-                  key={project.id}
-                  project={project}
-                  initialSaved
-                  onSavedChange={(saved) => {
-                    if (!saved) setProjects((current) => current.filter((item) => item.id !== project.id));
-                  }}
-                />
-              ))}
-            </div>
+          {!loadingSaved && !savedError && projects.length ? (
+            <>
+              <h2 className="saved-section-title">Your bookmarks</h2>
+              <div className="project-grid">
+                {projects.map((project) => (
+                  <ProjectCard
+                    key={project.id}
+                    project={project}
+                    initialSaved
+                    onSavedChange={(saved) => {
+                      if (!saved) setProjects((current) => current.filter((item) => item.id !== project.id));
+                    }}
+                  />
+                ))}
+              </div>
+            </>
           ) : null}
+          <div className="saved-catalog-section">
+            <h2 className="saved-section-title">Explore projects</h2>
+            {loadingCatalog ? <div className="empty-state" role="status">Loading projects…</div> : null}
+            {catalogError ? <div className="empty-state" role="alert">{catalogError}</div> : null}
+            {!loadingCatalog && !catalogError && !catalogProjects.length ? (
+              <div className="empty-state">No projects are available right now.</div>
+            ) : null}
+            {!loadingCatalog && !catalogError && catalogProjects.length ? (
+              <div className="project-grid">
+                {catalogProjects
+                  .filter((project) => !projects.some((saved) => saved.id === project.id))
+                  .map((project) => (
+                    <ProjectCard
+                      key={project.id}
+                      project={project}
+                      onSavedChange={(saved) => {
+                        if (saved) setProjects((current) => [...current, project]);
+                      }}
+                    />
+                  ))}
+              </div>
+            ) : null}
+          </div>
         </div>
       </section>
     </div>
