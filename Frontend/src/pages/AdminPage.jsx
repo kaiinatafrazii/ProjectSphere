@@ -267,7 +267,7 @@ export default function AdminPage() {
                   <article className="admin-record" key={project.id}>
                     {project.screenshotUrl ? <img className="admin-project-image" src={optimizedImageUrl(project.screenshotUrl, 720)} alt={`${project.title} project preview`} loading="lazy" decoding="async" /> : null}
                     <div className="admin-record-main">
-                      <div className="dashboard-project-title"><h3>{project.title}</h3><span className={`status-badge status-${project.status}`}>{project.status.replaceAll('_', ' ')}</span></div>
+                      <div className="dashboard-project-title"><h3>{project.title}</h3><span className={`status-badge status-${typeof project.status === 'string' ? project.status : 'unknown'}`}>{typeof project.status === 'string' ? project.status.replaceAll('_', ' ') : 'Unknown status'}</span></div>
                       <p>{project.tagline}</p>
                       <small>{project.ownerName} · {project.ownerEmail} · {project.category} · {project.reviewCount} reviews</small>
                       {project.summary ? <p><strong>Summary:</strong> {project.summary}</p> : null}
